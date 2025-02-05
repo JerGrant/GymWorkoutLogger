@@ -1,0 +1,1 @@
+ C:\\Users\\Jer\\StudioProjects\\GymWorkoutLogger\\.dart_tool\\flutter_build\\b38636934342fb31dc1164acfd1fb69a\\native_assets.yaml: 
