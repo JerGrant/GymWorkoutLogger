@@ -368,10 +368,10 @@
       "languageVersion": "3.6"
     }
   ],
-  "generated": "2025-02-07T01:13:39.276755Z",
+  "generated": "2025-02-07T03:04:30.677670Z",
   "generator": "pub",
-  "generatorVersion": "3.6.1",
+  "generatorVersion": "3.6.2",
   "flutterRoot": "file:///C:/Users/Jer/flutter",
-  "flutterVersion": "3.27.3",
+  "flutterVersion": "3.27.4",
   "pubCache": "file:///C:/Users/Jer/AppData/Local/Pub/Cache"
 }
