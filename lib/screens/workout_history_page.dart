@@ -47,8 +47,8 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
     }
 
     if (searchQuery.isNotEmpty) {
-      query = query.where('name', isGreaterThanOrEqualTo: searchQuery)
-          .where('name', isLessThanOrEqualTo: searchQuery + '\uf8ff');
+      query = query.where('name', isGreaterThanOrEqualTo: _capitalize(searchQuery))
+          .where('name', isLessThanOrEqualTo: _capitalize(searchQuery) + '\uf8ff');
     }
 
     return query.snapshots();
@@ -61,6 +61,11 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
         searchQuery = value.trim();
       });
     });
+  }
+
+  String _capitalize(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1).toLowerCase();
   }
 
   @override
