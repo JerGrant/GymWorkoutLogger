@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'profile_page.dart';
+import 'workout_page.dart';  // Import Workout Page
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -13,9 +14,9 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
-  // ❌ Fix: Remove `const` before the list
   final List<Widget> _pages = [
     HomePageContent(), // Extracted Home Page UI
+    WorkoutPage(), // Added Workout Page
     ProfilePage(),
   ];
 
@@ -34,6 +35,10 @@ class _HomePageState extends State<HomePage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
             label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.fitness_center),
+            label: 'Workout',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.account_circle),

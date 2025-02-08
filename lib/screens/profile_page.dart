@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -11,6 +14,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final GoogleSignIn _googleSignIn = GoogleSignIn();
   GoogleSignInAccount? _user;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   int workoutStreak = 0;
   String firstName = "";
@@ -71,6 +75,7 @@ class _ProfilePageState extends State<ProfilePage> {
           feet = data['feet'] ?? 0;
           inches = data['inches'] ?? 0;
           weight = (data['weight'] ?? 0.0).toDouble();
+          profileImage = data['profileImage'] ?? "https://via.placeholder.com/150";
           _firstNameController.text = firstName;
           _lastNameController.text = lastName;
           _cityController.text = city;
@@ -88,30 +93,39 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _saveProfile() async {
-    if (_user == null) {
-      print("Error: No user signed in.");
-      return;
-    }
-
-    print("🔥 Attempting to save profile for user ID: ${_user!.id}");  // Debugging
+  Future<void> _uploadProfileImage() async {
+    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (pickedFile == null) return;
+    File file = File(pickedFile.path);
 
     try {
+      String filePath = 'profile_images/${_user!.id}.jpg';
+      TaskSnapshot snapshot = await _storage.ref(filePath).putFile(file);
+      String downloadUrl = await snapshot.ref.getDownloadURL();
+
       await _db.collection('users').doc(_user!.id).set({
-        'firstName': _firstNameController.text,
-        'lastName': _lastNameController.text,
-        'city': _cityController.text,
-        'state': selectedState,
-        'feet': int.tryParse(_feetController.text) ?? 0,
-        'inches': int.tryParse(_inchesController.text) ?? 0,
-        'weight': double.tryParse(_weightController.text) ?? 0.0,
+        'profileImage': downloadUrl,
       }, SetOptions(merge: true));
 
-      print("✅ Profile successfully saved!");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Profile Updated")));
+      setState(() {
+        profileImage = downloadUrl;
+      });
     } catch (e) {
-      print("❌ Error saving profile: $e");  // Debugging
+      print("Error uploading profile image: $e");
     }
+  }
+
+  Future<void> _saveProfile() async {
+    if (_user == null) return;
+    await _db.collection('users').doc(_user!.id).set({
+      'firstName': _firstNameController.text,
+      'lastName': _lastNameController.text,
+      'city': _cityController.text,
+      'state': selectedState,
+      'feet': int.tryParse(_feetController.text) ?? 0,
+      'inches': int.tryParse(_inchesController.text) ?? 0,
+      'weight': double.tryParse(_weightController.text) ?? 0.0,
+    }, SetOptions(merge: true));
   }
 
   @override
@@ -124,8 +138,18 @@ class _ProfilePageState extends State<ProfilePage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            GestureDetector(
+              onTap: _uploadProfileImage,
+              child: CircleAvatar(
+                radius: 50,
+                backgroundImage: NetworkImage(profileImage),
+              ),
+            ),
+            SizedBox(height: 10),
+            Text("Tap to change profile image"),
             TextField(controller: _firstNameController, decoration: InputDecoration(labelText: "First Name")),
             TextField(controller: _lastNameController, decoration: InputDecoration(labelText: "Last Name")),
+            TextField(controller: _cityController, decoration: InputDecoration(labelText: "City")),
             DropdownButton<String>(
               value: selectedState,
               items: states.map((state) {
@@ -135,16 +159,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 setState(() => selectedState = value!);
               },
             ),
-            TextField(controller: _cityController, decoration: InputDecoration(labelText: "City")),
-            Row(
-              children: [
-                Expanded(child: TextField(controller: _feetController, decoration: InputDecoration(labelText: "Feet"), keyboardType: TextInputType.number)),
-                SizedBox(width: 10),
-                Expanded(child: TextField(controller: _inchesController, decoration: InputDecoration(labelText: "Inches"), keyboardType: TextInputType.number)),
-              ],
-            ),
+            TextField(controller: _feetController, decoration: InputDecoration(labelText: "Feet"), keyboardType: TextInputType.number),
+            TextField(controller: _inchesController, decoration: InputDecoration(labelText: "Inches"), keyboardType: TextInputType.number),
             TextField(controller: _weightController, decoration: InputDecoration(labelText: "Weight (lbs)"), keyboardType: TextInputType.number),
-            SizedBox(height: 20),
             ElevatedButton(onPressed: _saveProfile, child: Text("Save Changes")),
           ],
         ),
