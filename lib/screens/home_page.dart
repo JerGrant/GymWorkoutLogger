@@ -2,7 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'profile_page.dart';
-import 'workout_page.dart';  // Import Workout Page
+import 'workout_page.dart';
+import 'exercise_page.dart'; // Import Exercise Page
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,8 +16,9 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = [
-    HomePageContent(), // Extracted Home Page UI
-    WorkoutPage(), // Added Workout Page
+    HomePageContent(),
+    WorkoutPage(),
+    ExercisePage(), // Added Exercise Page
     ProfilePage(),
   ];
 
@@ -41,12 +43,17 @@ class _HomePageState extends State<HomePage> {
             label: 'Workout',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.list), // Exercises icon
+            label: 'Exercises',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.account_circle),
             label: 'Profile',
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue,
+        selectedItemColor: Colors.blue, // Dark blue for selected
+        unselectedItemColor: Colors.blue.shade200, // Lighter blue for unselected
         onTap: _onItemTapped,
       ),
     );
