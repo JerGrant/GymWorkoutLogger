@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:gymworkoutlogger/screens/create_exercise_page.dart';
 
 class ExerciseSelectionModal extends StatefulWidget {
   final List<Map<String, dynamic>> alreadySelectedExercises;
@@ -14,41 +16,25 @@ class ExerciseSelectionModal extends StatefulWidget {
 class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
   List<Map<String, dynamic>> selectedExercises = [];
   String searchQuery = "";
-  String? selectedCategory;
-  String? selectedBodyPart;
-  String selectedSort = "Alphabetical";
-
-  final Map<String, List<String>> bodyPartHierarchy = {
-    "Shoulders": ["Front Delts", "Side Delts", "Rear Delts"],
-    "Chest": [],
-    "Arms": ["Biceps", "Triceps", "Forearms"],
-    "Back": ["Lats", "Traps", "Lower Back"],
-    "Core": ["Upper Abs", "Lower Abs", "Obliques"],
-    "Legs": ["Quads", "Hamstrings", "Calves", "Glutes"],
-    "Full Body": [],
-    "Cardio": [],
-    "Other": [],
-  };
-
-  final List<String> categories = ["Barbell", "Dumbbell", "Machine", "Cardio", "Other"];
-  final List<String> sortOptions = ["Alphabetical", "Body Part", "Category"];
+  final User? user = FirebaseAuth.instance.currentUser;
 
   @override
   void initState() {
     super.initState();
-    selectedExercises = [];
+    selectedExercises = List.from(widget.alreadySelectedExercises);
   }
 
-  List<QueryDocumentSnapshot<Object?>> applyFilters(List<QueryDocumentSnapshot<Object?>> exercises) {
-    return exercises.where((exercise) {
-      var data = exercise.data() as Map<String, dynamic>? ?? {};
-      bool matchesSearch = data['name']?.toString().toLowerCase().contains(searchQuery.toLowerCase()) ?? false;
+  Future<void> _createNewExercise() async {
+    final newExercise = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => CreateExercisePage()),
+    );
 
-      bool matchesBodyPart = selectedBodyPart == null || data['bodyPart'] == selectedBodyPart;
-      bool matchesCategory = selectedCategory == null || data['category'] == selectedCategory;
-
-      return matchesSearch && matchesBodyPart && matchesCategory;
-    }).toList();
+    if (newExercise != null) {
+      setState(() {
+        selectedExercises.add(newExercise);
+      });
+    }
   }
 
   @override
@@ -72,11 +58,18 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
           ),
           Expanded(
             child: StreamBuilder(
-              stream: FirebaseFirestore.instance.collection('exercises').snapshots(),
+              stream: FirebaseFirestore.instance
+                  .collection('exercises')
+                  .where('userId', isEqualTo: user?.uid)
+                  .snapshots(),
               builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
                 if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
 
-                var exercises = applyFilters(snapshot.data!.docs);
+                var exercises = snapshot.data!.docs.where((exercise) {
+                  var data = exercise.data() as Map<String, dynamic>;
+                  return data['name'].toLowerCase().contains(searchQuery.toLowerCase());
+                }).toList();
+
                 return ListView.builder(
                   itemCount: exercises.length,
                   itemBuilder: (context, index) {
@@ -102,12 +95,23 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          widget.onExercisesSelected(selectedExercises);
-          Navigator.pop(context);
-        },
-        child: Icon(Icons.check),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            onPressed: _createNewExercise,
+            child: Icon(Icons.add),
+            tooltip: 'Create New Exercise',
+          ),
+          SizedBox(height: 10),
+          FloatingActionButton(
+            onPressed: () {
+              widget.onExercisesSelected(selectedExercises);
+              Navigator.pop(context);
+            },
+            child: Icon(Icons.check),
+          ),
+        ],
       ),
     );
   }

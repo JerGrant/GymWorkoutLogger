@@ -209,8 +209,14 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(exercise['name'] ?? 'Unnamed Exercise', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                  Text("${exercise['category'] ?? 'Unknown Category'} | ${exercise['bodyPart'] ?? 'Unknown Body Part'}", style: TextStyle(color: Colors.grey)),
+                                  Text(
+                                    exercise['name'] ?? 'Unnamed Exercise',
+                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                  ),
+                                  Text(
+                                    "${exercise['category'] ?? 'Unknown Category'} | ${exercise['bodyPart'] ?? 'Unknown Body Part'}${exercise['subcategory'] != null ? ' (${exercise['subcategory']})' : ''}",
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
                                 ],
                               ),
                               Row(
@@ -282,17 +288,20 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 },
               ),
             ),
+            // Swapped button positions
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
+                // Finish Workout button is now on the left
+                ElevatedButton(
+                  onPressed: _finishWorkout,
+                  child: Text('Finish Workout'),
+                ),
+                // Cancel Workout button is now on the right
                 ElevatedButton(
                   onPressed: _cancelWorkout,
                   child: Text('Cancel Workout'),
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                ),
-                ElevatedButton(
-                  onPressed: _finishWorkout,
-                  child: Text('Finish Workout'),
                 ),
               ],
             ),
