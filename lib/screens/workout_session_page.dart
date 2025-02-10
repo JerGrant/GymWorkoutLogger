@@ -77,7 +77,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (context) => ExerciseSelectionModal(
-          alreadySelectedExercises: _selectedExercises,
           onExercisesSelected: (selected) {
             setState(() {
               for (var exercise in selected) {

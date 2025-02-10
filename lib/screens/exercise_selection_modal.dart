@@ -4,10 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:gymworkoutlogger/screens/create_exercise_page.dart';
 
 class ExerciseSelectionModal extends StatefulWidget {
-  final List<Map<String, dynamic>> alreadySelectedExercises;
   final Function(List<Map<String, dynamic>>) onExercisesSelected;
 
-  ExerciseSelectionModal({required this.alreadySelectedExercises, required this.onExercisesSelected});
+  ExerciseSelectionModal({required this.onExercisesSelected});
 
   @override
   _ExerciseSelectionModalState createState() => _ExerciseSelectionModalState();
@@ -21,7 +20,8 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
   @override
   void initState() {
     super.initState();
-    selectedExercises = List.from(widget.alreadySelectedExercises);
+    // Initialize selectedExercises as empty list, so no exercises are pre-selected.
+    selectedExercises = [];
   }
 
   Future<void> _createNewExercise() async {
@@ -52,7 +52,9 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
                 border: OutlineInputBorder(),
               ),
               onChanged: (value) {
-                setState(() { searchQuery = value; });
+                setState(() {
+                  searchQuery = value;
+                });
               },
             ),
           ),
@@ -74,15 +76,21 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
                   itemCount: exercises.length,
                   itemBuilder: (context, index) {
                     var data = exercises[index].data() as Map<String, dynamic>;
+
+                    // Always set exercises as unchecked since we're not tracking state across modal openings
+                    bool isSelected = selectedExercises.any((ex) => ex['name'] == data['name']);
+
                     return CheckboxListTile(
                       title: Text(data['name'] ?? 'Unknown'),
                       subtitle: Text("Category: ${data['category']}, Body Part: ${data['bodyPart']}"),
-                      value: selectedExercises.any((ex) => ex['name'] == data['name']),
+                      value: isSelected, // Correctly set the checkbox state
                       onChanged: (bool? value) {
                         setState(() {
                           if (value == true) {
+                            // Add exercise to selectedExercises when it's checked
                             selectedExercises.add(Map<String, dynamic>.from(data));
                           } else {
+                            // Remove exercise from selectedExercises when unchecked
                             selectedExercises.removeWhere((ex) => ex['name'] == data['name']);
                           }
                         });
@@ -106,7 +114,7 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
           SizedBox(height: 10),
           FloatingActionButton(
             onPressed: () {
-              widget.onExercisesSelected(selectedExercises);
+              widget.onExercisesSelected(selectedExercises);  // Pass selected exercises back to the session
               Navigator.pop(context);
             },
             child: Icon(Icons.check),
