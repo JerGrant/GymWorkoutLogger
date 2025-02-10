@@ -82,14 +82,16 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
           Expanded(
             child: StreamBuilder(
               stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user?.uid)
                   .collection('exercises')
-                  .where('userId', isEqualTo: user?.uid)
+                  .orderBy('name')
                   .snapshots(),
               builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
                 if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
 
                 var exercises = snapshot.data!.docs.map((doc) {
-                  return doc.data() as Map<String, dynamic>;
+                  return {'id': doc.id, ...doc.data() as Map<String, dynamic>};
                 }).where((data) {
                   return data['name'].toLowerCase().contains(searchQuery.toLowerCase());
                 }).toList();
@@ -133,7 +135,7 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
                           ),
                         ),
                         ...entry.value.map((data) {
-                          bool isSelected = selectedExercises.any((ex) => ex['name'] == data['name']);
+                          bool isSelected = selectedExercises.any((ex) => ex['id'] == data['id']);
                           return CheckboxListTile(
                             title: Text(data['name'] ?? 'Unknown'),
                             subtitle: Text("Category: ${data['category']}, Body Part: ${data['bodyPart']}"),
@@ -141,9 +143,9 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
                             onChanged: (bool? value) {
                               setState(() {
                                 if (value == true) {
-                                  selectedExercises.add(Map<String, dynamic>.from(data));
+                                  selectedExercises.add(data);
                                 } else {
-                                  selectedExercises.removeWhere((ex) => ex['name'] == data['name']);
+                                  selectedExercises.removeWhere((ex) => ex['id'] == data['id']);
                                 }
                               });
                             },

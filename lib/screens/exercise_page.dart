@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'exercise_detail_page.dart';
-import 'create_exercise_page.dart'; // ✅ Import CreateExercisePage
+import 'create_exercise_page.dart';
 
 class ExercisePage extends StatefulWidget {
   @override
@@ -69,7 +70,6 @@ class _ExercisePageState extends State<ExercisePage> {
       grouped[key]!.add(exercise);
     }
 
-    // ✅ Remove empty groups so only letters with exercises are shown
     grouped.removeWhere((key, value) => value.isEmpty);
 
     return grouped;
@@ -88,6 +88,15 @@ class _ExercisePageState extends State<ExercisePage> {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text("Exercises")),
+        body: Center(child: Text("You need to log in to view your exercises.")),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: Text("Exercises")),
       body: Column(
@@ -182,16 +191,25 @@ class _ExercisePageState extends State<ExercisePage> {
             ),
           ),
           Expanded(
-            child: StreamBuilder(
-              stream: FirebaseFirestore.instance.collection('exercises').snapshots(),
-              builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('exercises')
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return Center(child: CircularProgressIndicator());
                 }
 
                 var exercises = applyFilters(snapshot.data!.docs);
+                if (exercises.isEmpty) {
+                  return Center(child: Text("No exercises found."));
+                }
+
                 Map<String, List<QueryDocumentSnapshot<Object?>>> groupedExercises =
-                groupByField(exercises, selectedSort == "Alphabetical" ? "name" : selectedSort == "Body Part" ? "bodyPart" : "category");
+                groupByField(exercises, selectedSort == "Alphabetical" ? "name" : selectedSort);
 
                 var sortedKeys = groupedExercises.keys.toList()..sort();
 
@@ -204,18 +222,14 @@ class _ExercisePageState extends State<ExercisePage> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (groupExercises.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Text(
-                              groupKey,
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
-                          ),
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(groupKey, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        ),
                         ...groupExercises.map((exercise) {
-                          var data = exercise.data() as Map<String, dynamic>? ?? {};
+                          var data = exercise.data() as Map<String, dynamic>;
                           return ListTile(
-                            title: Text(data['name'] ?? 'Unknown Exercise'),
+                            title: Text(data['name']),
                             subtitle: Text("${data['category']} - ${data['bodyPart']}"),
                             onTap: () {
                               Navigator.push(

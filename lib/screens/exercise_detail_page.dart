@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ExerciseDetailsPage extends StatefulWidget {
   final DocumentSnapshot exercise;
@@ -14,7 +15,6 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
   TextEditingController _nameController = TextEditingController();
   TextEditingController _descriptionController = TextEditingController();
   TextEditingController _notesController = TextEditingController();
-  String imageUrl = "";
   String selectedCategory = "";
   String selectedBodyPart = "";
 
@@ -39,24 +39,59 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
     _notesController.text = data["notes"] ?? "";
     selectedCategory = data["category"] ?? categories.first;
     selectedBodyPart = data["bodyPart"] ?? bodyParts.first;
-    imageUrl = data["imageUrl"] ?? "https://via.placeholder.com/150";
   }
 
   void _updateExercise() async {
-    await FirebaseFirestore.instance.collection('exercises').doc(widget.exercise.id).update({
-      'name': _nameController.text,
-      'category': selectedCategory,
-      'bodyPart': selectedBodyPart,
-      'description': _descriptionController.text,
-      'notes': _notesController.text,
-    });
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("User not logged in.")));
+      return;
+    }
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('exercises')
+          .doc(widget.exercise.id)
+          .update({
+        'name': _nameController.text,
+        'category': selectedCategory,
+        'bodyPart': selectedBodyPart,
+        'description': _descriptionController.text,
+        'notes': _notesController.text,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Exercise updated successfully!")));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to update exercise: $e")));
+    }
   }
 
   void _deleteExercise() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("User not logged in.")));
+      return;
+    }
+
     bool confirmDelete = await _showDeleteConfirmation();
     if (confirmDelete) {
-      await FirebaseFirestore.instance.collection('exercises').doc(widget.exercise.id).delete();
-      Navigator.pop(context);
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('exercises')
+            .doc(widget.exercise.id)
+            .delete();
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Exercise deleted successfully!")));
+        Navigator.pop(context);
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to delete exercise: $e")));
+      }
     }
   }
 

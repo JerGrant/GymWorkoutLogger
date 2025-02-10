@@ -46,6 +46,14 @@ collection
 3.4
 file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/collection-1.19.0/
 file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/collection-1.19.0/lib/
+connectivity_plus
+2.18
+file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/connectivity_plus-4.0.2/
+file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/connectivity_plus-4.0.2/lib/
+connectivity_plus_platform_interface
+2.12
+file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/connectivity_plus_platform_interface-1.2.4/
+file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/connectivity_plus_platform_interface-1.2.4/lib/
 cross_file
 3.3
 file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/cross_file-0.3.4+2/
@@ -62,6 +70,10 @@ cupertino_icons
 3.1
 file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/cupertino_icons-1.0.8/
 file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/cupertino_icons-1.0.8/lib/
+dbus
+2.17
+file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/dbus-0.7.11/
+file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/dbus-0.7.11/lib/
 equatable
 2.12
 file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/equatable-2.0.7/
@@ -218,6 +230,10 @@ intl
 3.3
 file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/intl-0.20.2/
 file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/intl-0.20.2/lib/
+js
+2.19
+file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/js-0.6.7/
+file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/js-0.6.7/lib/
 leak_tracker
 3.2
 file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/leak_tracker-10.0.7/
@@ -250,6 +266,10 @@ mime
 3.2
 file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/mime-2.0.0/
 file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/mime-2.0.0/lib/
+nm
+2.12
+file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/nm-0.5.0/
+file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/nm-0.5.0/lib/
 path
 3.0
 file:///C:/Users/Jer/AppData/Local/Pub/Cache/hosted/pub.dev/path-1.9.0/

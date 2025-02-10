@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -11,10 +11,12 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
-  GoogleSignInAccount? _user;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+
+  User? _user;
+  String profileImage = "assets/images/profile_placeholder.png";
 
   int workoutStreak = 0;
   String firstName = "";
@@ -24,7 +26,6 @@ class _ProfilePageState extends State<ProfilePage> {
   int feet = 0;
   int inches = 0;
   double weight = 0.0;
-  String profileImage = "https://via.placeholder.com/150";
 
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
@@ -36,7 +37,13 @@ class _ProfilePageState extends State<ProfilePage> {
   bool isLoading = true;
 
   List<String> states = [
-    "Select State", "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"
+    "Select State", "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
+    "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana",
+    "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana",
+    "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina",
+    "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
+    "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia",
+    "Wisconsin", "Wyoming"
   ];
 
   @override
@@ -46,20 +53,16 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _getUser() async {
-    try {
-      final user = await _googleSignIn.signInSilently();
-      if (user != null) {
-        setState(() {
-          _user = user;
-          profileImage = user.photoUrl ?? "https://via.placeholder.com/150";
-        });
-        await _fetchUserProfile(user.id);
-      }
-    } catch (e) {
-      print("Error fetching user: $e");
-    } finally {
-      setState(() => isLoading = false);
+    setState(() => isLoading = true);
+    _user = _auth.currentUser;
+
+    if (_user != null) {
+      print("User ID: ${_user!.uid}"); // Debugging log
+      await _fetchUserProfile(_user!.uid);
+    } else {
+      print("No user logged in.");
     }
+    setState(() => isLoading = false);
   }
 
   Future<void> _fetchUserProfile(String userId) async {
@@ -75,7 +78,8 @@ class _ProfilePageState extends State<ProfilePage> {
           feet = data['feet'] ?? 0;
           inches = data['inches'] ?? 0;
           weight = (data['weight'] ?? 0.0).toDouble();
-          profileImage = data['profileImage'] ?? "https://via.placeholder.com/150";
+          profileImage = data['profileImage'] ?? "assets/images/profile_placeholder.png";
+
           _firstNameController.text = firstName;
           _lastNameController.text = lastName;
           _cityController.text = city;
@@ -88,8 +92,6 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     } catch (e) {
       print("Error fetching profile: $e");
-    } finally {
-      setState(() => isLoading = false);
     }
   }
 
@@ -99,11 +101,11 @@ class _ProfilePageState extends State<ProfilePage> {
     File file = File(pickedFile.path);
 
     try {
-      String filePath = 'profile_images/${_user!.id}.jpg';
+      String filePath = 'profile_images/${_user!.uid}.jpg';
       TaskSnapshot snapshot = await _storage.ref(filePath).putFile(file);
       String downloadUrl = await snapshot.ref.getDownloadURL();
 
-      await _db.collection('users').doc(_user!.id).set({
+      await _db.collection('users').doc(_user!.uid).set({
         'profileImage': downloadUrl,
       }, SetOptions(merge: true));
 
@@ -116,16 +118,25 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _saveProfile() async {
-    if (_user == null) return;
-    await _db.collection('users').doc(_user!.id).set({
-      'firstName': _firstNameController.text,
-      'lastName': _lastNameController.text,
-      'city': _cityController.text,
-      'state': selectedState,
-      'feet': int.tryParse(_feetController.text) ?? 0,
-      'inches': int.tryParse(_inchesController.text) ?? 0,
-      'weight': double.tryParse(_weightController.text) ?? 0.0,
-    }, SetOptions(merge: true));
+    if (_user == null) {
+      print("No authenticated user found.");
+      return;
+    }
+
+    try {
+      await _db.collection('users').doc(_user!.uid).set({
+        'firstName': _firstNameController.text,
+        'lastName': _lastNameController.text,
+        'city': _cityController.text,
+        'state': selectedState,
+        'feet': int.tryParse(_feetController.text) ?? 0,
+        'inches': int.tryParse(_inchesController.text) ?? 0,
+        'weight': double.tryParse(_weightController.text) ?? 0.0,
+      }, SetOptions(merge: true));
+      print("Profile updated successfully!");
+    } catch (e) {
+      print("Error saving profile: $e");
+    }
   }
 
   @override
@@ -134,7 +145,7 @@ class _ProfilePageState extends State<ProfilePage> {
       appBar: AppBar(title: Text("Profile")),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
-          : Padding(
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
@@ -142,11 +153,14 @@ class _ProfilePageState extends State<ProfilePage> {
               onTap: _uploadProfileImage,
               child: CircleAvatar(
                 radius: 50,
-                backgroundImage: NetworkImage(profileImage),
+                backgroundImage: profileImage.startsWith('http')
+                    ? NetworkImage(profileImage)
+                    : AssetImage(profileImage) as ImageProvider,
               ),
             ),
             SizedBox(height: 10),
             Text("Tap to change profile image"),
+            SizedBox(height: 20),
             TextField(controller: _firstNameController, decoration: InputDecoration(labelText: "First Name")),
             TextField(controller: _lastNameController, decoration: InputDecoration(labelText: "Last Name")),
             TextField(controller: _cityController, decoration: InputDecoration(labelText: "City")),
@@ -159,9 +173,22 @@ class _ProfilePageState extends State<ProfilePage> {
                 setState(() => selectedState = value!);
               },
             ),
-            TextField(controller: _feetController, decoration: InputDecoration(labelText: "Feet"), keyboardType: TextInputType.number),
-            TextField(controller: _inchesController, decoration: InputDecoration(labelText: "Inches"), keyboardType: TextInputType.number),
-            TextField(controller: _weightController, decoration: InputDecoration(labelText: "Weight (lbs)"), keyboardType: TextInputType.number),
+            TextField(
+              controller: _feetController,
+              decoration: InputDecoration(labelText: "Feet"),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: _inchesController,
+              decoration: InputDecoration(labelText: "Inches"),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: _weightController,
+              decoration: InputDecoration(labelText: "Weight (lbs)"),
+              keyboardType: TextInputType.number,
+            ),
+            SizedBox(height: 20),
             ElevatedButton(onPressed: _saveProfile, child: Text("Save Changes")),
           ],
         ),
