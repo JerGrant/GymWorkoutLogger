@@ -16,7 +16,8 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
   TextEditingController _descriptionController = TextEditingController();
   TextEditingController _notesController = TextEditingController();
   String selectedCategory = "";
-  String selectedBodyPart = "";
+  String? selectedMainBodyPart;
+  String? selectedSubBodyPart;
 
   final List<String> categories = [
     "Barbell", "Dumbbell", "Cables", "Machine", "Other", "Weighted Bodyweight",
@@ -24,11 +25,19 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
     "Plyometrics", "Resistance Bands", "Isometrics", "Stretching & Mobility"
   ];
 
-  final List<String> bodyParts = [
-    "Core", "Arms", "Biceps", "Triceps", "Back", "Traps", "Lats", "Lower Back",
-    "Chest", "Shoulders", "Front Delts", "Side Delts", "Rear Delts", "Legs", "Quads",
-    "Calves", "Hamstrings", "Glutes", "Other", "Cardio", "Swimming", "Full Body"
-  ];
+  // Main body part categories with subcategories
+  final Map<String, List<String>> bodyPartHierarchy = {
+    "Arms": ["Biceps", "Triceps", "Forearms"],
+    "Back": ["Traps", "Lats", "Lower Back"],
+    "Shoulders": ["Front Delts", "Side Delts", "Rear Delts"],
+    "Legs": ["Quads", "Hamstrings", "Calves", "Glutes"],
+    "Core": ["Upper Abs", "Lower Abs", "Obliques"],
+    "Chest": [],
+    "Full Body": [],
+    "Cardio": [],
+    "Swimming": [],
+    "Other": [],
+  };
 
   @override
   void initState() {
@@ -38,7 +47,22 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
     _descriptionController.text = data["description"] ?? "";
     _notesController.text = data["notes"] ?? "";
     selectedCategory = data["category"] ?? categories.first;
-    selectedBodyPart = data["bodyPart"] ?? bodyParts.first;
+
+    // Set initial body part selections
+    selectedSubBodyPart = data["bodyPart"];
+
+    // Ensure the selected sub-body part exists
+    if (selectedSubBodyPart != null) {
+      selectedMainBodyPart = bodyPartHierarchy.entries.firstWhere(
+            (entry) => entry.value.contains(selectedSubBodyPart),
+        orElse: () => const MapEntry("Other", []),
+      ).key;
+    }
+
+    // Ensure main body part is valid, or set it to null
+    if (!bodyPartHierarchy.containsKey(selectedMainBodyPart)) {
+      selectedMainBodyPart = null;
+    }
   }
 
   void _updateExercise() async {
@@ -58,7 +82,7 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           .update({
         'name': _nameController.text,
         'category': selectedCategory,
-        'bodyPart': selectedBodyPart,
+        'bodyPart': selectedSubBodyPart,
         'description': _descriptionController.text,
         'notes': _notesController.text,
       });
@@ -112,7 +136,8 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           ),
         ],
       ),
-    ) ?? false;
+    ) ??
+        false;
   }
 
   @override
@@ -146,16 +171,43 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
               },
               decoration: InputDecoration(labelText: "Category"),
             ),
-            DropdownButtonFormField(
-              value: selectedBodyPart,
-              items: bodyParts.map((bodyPart) => DropdownMenuItem(value: bodyPart, child: Text(bodyPart))).toList(),
+
+            // **Main Body Part Dropdown**
+            DropdownButtonFormField<String>(
+              value: bodyPartHierarchy.containsKey(selectedMainBodyPart) ? selectedMainBodyPart : null,
+              items: bodyPartHierarchy.keys.map((mainPart) {
+                return DropdownMenuItem(
+                  value: mainPart,
+                  child: Text(mainPart, style: TextStyle(fontWeight: FontWeight.bold)),
+                );
+              }).toList(),
               onChanged: (value) {
                 setState(() {
-                  selectedBodyPart = value.toString();
+                  selectedMainBodyPart = value;
+                  selectedSubBodyPart = null; // Reset subcategory when main part changes
                 });
               },
-              decoration: InputDecoration(labelText: "Body Part"),
+              decoration: InputDecoration(labelText: "Main Body Part"),
             ),
+
+            // **Sub Body Part Dropdown (Appears only when necessary)**
+            if (selectedMainBodyPart != null && bodyPartHierarchy[selectedMainBodyPart]!.isNotEmpty)
+              DropdownButtonFormField<String>(
+                value: bodyPartHierarchy[selectedMainBodyPart]!.contains(selectedSubBodyPart) ? selectedSubBodyPart : null,
+                items: bodyPartHierarchy[selectedMainBodyPart]!.map((subPart) {
+                  return DropdownMenuItem(
+                    value: subPart,
+                    child: Text(subPart),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedSubBodyPart = value;
+                  });
+                },
+                decoration: InputDecoration(labelText: "Specific Muscle Group"),
+              ),
+
             TextField(
               controller: _descriptionController,
               decoration: InputDecoration(labelText: "Description"),

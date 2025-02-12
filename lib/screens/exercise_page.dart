@@ -37,31 +37,38 @@ class _ExercisePageState extends State<ExercisePage> {
     "Plyometrics", "Resistance Bands", "Isometrics", "Stretching & Mobility"
   ];
 
+  /// **Applies Search & Filters**
   List<QueryDocumentSnapshot<Object?>> applyFilters(List<QueryDocumentSnapshot<Object?>> exercises) {
     return exercises.where((exercise) {
       var data = exercise.data() as Map<String, dynamic>? ?? {};
-      bool matchesSearch = data['name']?.toString().toLowerCase().contains(searchQuery) ?? false;
 
+      String name = data['name']?.toString().toLowerCase() ?? "";
+      String category = data['category']?.toString() ?? "";
+      String bodyPart = data['bodyPart']?.toString() ?? "";
+
+      bool matchesSearch = name.contains(searchQuery.toLowerCase());
+      bool matchesCategory = selectedCategory == null || category == selectedCategory;
       bool matchesBodyPart = selectedBodyPart == null ||
-          data['bodyPart'] == selectedBodyPart ||
-          (bodyPartHierarchy[selectedBodyPart]?.contains(data['bodyPart']) ?? false);
+          bodyPart == selectedBodyPart ||
+          (bodyPartHierarchy[selectedBodyPart]?.contains(bodyPart) ?? false);
 
-      bool matchesCategory = selectedCategory == null || data['category'] == selectedCategory;
-
-      return matchesSearch && matchesBodyPart && matchesCategory;
+      return matchesSearch && matchesCategory && matchesBodyPart;
     }).toList();
   }
 
+  /// **Groups Exercises by Selected Sort Option**
   Map<String, List<QueryDocumentSnapshot<Object?>>> groupByField(
       List<QueryDocumentSnapshot<Object?>> exercises, String field) {
+
     Map<String, List<QueryDocumentSnapshot<Object?>>> grouped = {};
 
     for (var exercise in exercises) {
       var data = exercise.data() as Map<String, dynamic>? ?? {};
-      String key = data[field]?.toString() ?? "Unknown";
+
+      String key = data[field]?.toString().trim() ?? "Uncategorized";  // More meaningful default
 
       if (field == "name" && key.isNotEmpty) {
-        key = key[0].toUpperCase(); // Get the first letter (A, B, C...)
+        key = key[0].toUpperCase(); // Sort Alphabetically
       }
 
       if (!grouped.containsKey(key)) {
@@ -71,10 +78,10 @@ class _ExercisePageState extends State<ExercisePage> {
     }
 
     grouped.removeWhere((key, value) => value.isEmpty);
-
     return grouped;
   }
 
+  /// **Navigates to Create Exercise Page**
   void _navigateToCreateExercisePage() async {
     final result = await Navigator.push(
       context,
@@ -82,7 +89,7 @@ class _ExercisePageState extends State<ExercisePage> {
     );
 
     if (result != null) {
-      setState(() {}); // Refresh the UI after adding a new exercise
+      setState(() {}); // Refresh after adding a new exercise
     }
   }
 
@@ -101,6 +108,7 @@ class _ExercisePageState extends State<ExercisePage> {
       appBar: AppBar(title: Text("Exercises")),
       body: Column(
         children: [
+          /// **Search Bar**
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
@@ -112,11 +120,13 @@ class _ExercisePageState extends State<ExercisePage> {
               ),
               onChanged: (value) {
                 setState(() {
-                  searchQuery = value.toLowerCase();
+                  searchQuery = value;
                 });
               },
             ),
           ),
+
+          /// **Sorting Dropdown**
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: DropdownButtonFormField<String>(
@@ -133,6 +143,8 @@ class _ExercisePageState extends State<ExercisePage> {
               decoration: InputDecoration(labelText: "Sort By"),
             ),
           ),
+
+          /// **Category & Body Part Filters**
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
             child: Row(
@@ -190,6 +202,8 @@ class _ExercisePageState extends State<ExercisePage> {
               ],
             ),
           ),
+
+          /// **Exercise List**
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -209,16 +223,13 @@ class _ExercisePageState extends State<ExercisePage> {
                 }
 
                 Map<String, List<QueryDocumentSnapshot<Object?>>> groupedExercises =
-                groupByField(exercises, selectedSort == "Alphabetical" ? "name" : selectedSort);
-
-                var sortedKeys = groupedExercises.keys.toList()..sort();
+                groupByField(exercises, selectedSort == "Alphabetical" ? "name" :
+                selectedSort == "Body Part" ? "bodyPart" : "category");
 
                 return ListView.builder(
-                  itemCount: sortedKeys.length,
-                  itemBuilder: (context, groupIndex) {
-                    String groupKey = sortedKeys[groupIndex];
-                    List<QueryDocumentSnapshot<Object?>> groupExercises = groupedExercises[groupKey]!;
-
+                  itemCount: groupedExercises.keys.length,
+                  itemBuilder: (context, index) {
+                    String groupKey = groupedExercises.keys.elementAt(index);
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -226,7 +237,7 @@ class _ExercisePageState extends State<ExercisePage> {
                           padding: const EdgeInsets.all(8.0),
                           child: Text(groupKey, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         ),
-                        ...groupExercises.map((exercise) {
+                        ...groupedExercises[groupKey]!.map((exercise) {
                           var data = exercise.data() as Map<String, dynamic>;
                           return ListTile(
                             title: Text(data['name']),

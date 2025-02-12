@@ -46,11 +46,17 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
-      setState(() {
-        _duration++;
-      });
+      if (mounted) {
+        setState(() {
+          _duration++;
+        });
+        print("Timer running: $_duration seconds");
+      } else {
+        _timer?.cancel();
+      }
     });
   }
+
 
   Future<void> _finishWorkout() async {
     _timer?.cancel();

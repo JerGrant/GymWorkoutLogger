@@ -35,6 +35,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController _weightController = TextEditingController();
 
   bool isLoading = true;
+  bool isSaving = false;
 
   List<String> states = [
     "Select State", "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
@@ -57,10 +58,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _user = _auth.currentUser;
 
     if (_user != null) {
-      print("User ID: ${_user!.uid}"); // Debugging log
       await _fetchUserProfile(_user!.uid);
-    } else {
-      print("No user logged in.");
     }
     setState(() => isLoading = false);
   }
@@ -87,8 +85,6 @@ class _ProfilePageState extends State<ProfilePage> {
           _inchesController.text = inches.toString();
           _weightController.text = weight.toString();
         });
-      } else {
-        print("User profile not found in Firestore.");
       }
     } catch (e) {
       print("Error fetching profile: $e");
@@ -123,6 +119,8 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
 
+    setState(() => isSaving = true);
+
     try {
       await _db.collection('users').doc(_user!.uid).set({
         'firstName': _firstNameController.text,
@@ -133,8 +131,29 @@ class _ProfilePageState extends State<ProfilePage> {
         'inches': int.tryParse(_inchesController.text) ?? 0,
         'weight': double.tryParse(_weightController.text) ?? 0.0,
       }, SetOptions(merge: true));
+
+      if (mounted) {
+        setState(() => isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Profile updated successfully!"),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
       print("Profile updated successfully!");
     } catch (e) {
+      if (mounted) {
+        setState(() => isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error saving profile. Please try again."),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       print("Error saving profile: $e");
     }
   }
@@ -173,23 +192,16 @@ class _ProfilePageState extends State<ProfilePage> {
                 setState(() => selectedState = value!);
               },
             ),
-            TextField(
-              controller: _feetController,
-              decoration: InputDecoration(labelText: "Feet"),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: _inchesController,
-              decoration: InputDecoration(labelText: "Inches"),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: _weightController,
-              decoration: InputDecoration(labelText: "Weight (lbs)"),
-              keyboardType: TextInputType.number,
-            ),
+            TextField(controller: _feetController, decoration: InputDecoration(labelText: "Feet"), keyboardType: TextInputType.number),
+            TextField(controller: _inchesController, decoration: InputDecoration(labelText: "Inches"), keyboardType: TextInputType.number),
+            TextField(controller: _weightController, decoration: InputDecoration(labelText: "Weight (lbs)"), keyboardType: TextInputType.number),
             SizedBox(height: 20),
-            ElevatedButton(onPressed: _saveProfile, child: Text("Save Changes")),
+            ElevatedButton(
+              onPressed: isSaving ? null : _saveProfile,
+              child: isSaving
+                  ? CircularProgressIndicator(color: Colors.white)
+                  : Text("Save Changes"),
+            ),
           ],
         ),
       ),
