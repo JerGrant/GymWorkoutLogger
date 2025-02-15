@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'workout_history_detail_page.dart'; // Import your detail page
 
 class workout_history_page extends StatefulWidget {
   @override
@@ -27,16 +28,19 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
     if (picked != null) {
       setState(() {
         startDate = picked.start;
-        endDate = picked.end.add(Duration(days: 1)).subtract(Duration(seconds: 1)); // Ensure full day range
+        endDate =
+            picked.end.add(Duration(days: 1)).subtract(Duration(seconds: 1));
       });
     }
   }
 
   Stream<QuerySnapshot> getWorkouts() {
-    Query query = _firestore.collection('workouts').where('userId', isEqualTo: user?.uid);
+    Query query =
+    _firestore.collection('workouts').where('userId', isEqualTo: user?.uid);
 
     if (startDate != null && endDate != null) {
-      query = query.where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate!))
+      query = query
+          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate!))
           .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(endDate!));
     }
 
@@ -47,7 +51,8 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
     }
 
     if (searchQuery.isNotEmpty) {
-      query = query.where('name', isGreaterThanOrEqualTo: _capitalize(searchQuery))
+      query = query
+          .where('name', isGreaterThanOrEqualTo: _capitalize(searchQuery))
           .where('name', isLessThanOrEqualTo: _capitalize(searchQuery) + '\uf8ff');
     }
 
@@ -88,6 +93,7 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
       ),
       body: Column(
         children: [
+          // Search field
           Padding(
             padding: EdgeInsets.all(10.0),
             child: TextField(
@@ -101,6 +107,7 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
               onChanged: _onSearchChanged,
             ),
           ),
+          // Sorting dropdown
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 10.0),
             child: DropdownButton<String>(
@@ -120,6 +127,7 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
               }).toList(),
             ),
           ),
+          // List of workouts
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: getWorkouts(),
@@ -127,20 +135,41 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
                 if (!snapshot.hasData) {
                   return Center(child: CircularProgressIndicator());
                 }
-                final workouts = snapshot.data!.docs;
+                final docs = snapshot.data!.docs;
                 return ListView.builder(
-                  itemCount: workouts.length,
+                  itemCount: docs.length,
                   itemBuilder: (context, index) {
-                    var workout = workouts[index].data() as Map<String, dynamic>;
+                    final doc = docs[index];
+                    final workout = doc.data() as Map<String, dynamic>;
+                    final workoutId = doc.id; // Firestore document ID
+
                     return Card(
                       margin: EdgeInsets.all(8.0),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10.0),
                       ),
                       child: ListTile(
-                        title: Text(workout['name'], style: TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(DateFormat.yMMMd().format((workout['timestamp'] as Timestamp).toDate())),
+                        title: Text(
+                          workout['name'] ?? 'Unnamed Workout',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          DateFormat.yMMMd().format(
+                            (workout['timestamp'] as Timestamp).toDate(),
+                          ),
+                        ),
                         trailing: Icon(Icons.fitness_center),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => WorkoutHistoryDetailPage(
+                                workout: workout,
+                                workoutId: workoutId,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     );
                   },
