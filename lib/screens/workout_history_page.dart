@@ -3,7 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'workout_history_detail_page.dart'; // Import your detail page
+import 'calendar_filter_page.dart';
+import 'workout_history_detail_page.dart';
 
 class workout_history_page extends StatefulWidget {
   @override
@@ -19,24 +20,31 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
   String sortOption = "Newest to Oldest";
   Timer? _debounce;
 
-  Future<void> _selectDateRange(BuildContext context) async {
-    final DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
+  @override
+  void initState() {
+    super.initState();
+    startDate = null; // No default date filter
+    endDate = null;
+  }
+
+  void _openCalendarFilter() async {
+    final DateTimeRange? picked = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CalendarFilterPage(),
+      ),
     );
+
     if (picked != null) {
       setState(() {
         startDate = picked.start;
-        endDate =
-            picked.end.add(Duration(days: 1)).subtract(Duration(seconds: 1));
+        endDate = picked.end;
       });
     }
   }
 
   Stream<QuerySnapshot> getWorkouts() {
-    Query query =
-    _firestore.collection('workouts').where('userId', isEqualTo: user?.uid);
+    Query query = _firestore.collection('workouts').where('userId', isEqualTo: user?.uid);
 
     if (startDate != null && endDate != null) {
       query = query
@@ -44,11 +52,7 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
           .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(endDate!));
     }
 
-    if (sortOption == "Alphabetical Order") {
-      query = query.orderBy('name');
-    } else {
-      query = query.orderBy('timestamp', descending: sortOption == "Newest to Oldest");
-    }
+    query = query.orderBy('timestamp', descending: sortOption == "Newest to Oldest");
 
     if (searchQuery.isNotEmpty) {
       query = query
@@ -87,26 +91,21 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
         actions: [
           IconButton(
             icon: Icon(Icons.calendar_today),
-            onPressed: () => _selectDateRange(context),
+            onPressed: _openCalendarFilter, // Open calendar filter
           )
         ],
       ),
       body: Column(
         children: [
-          // Search field
-          Padding(
-            padding: EdgeInsets.all(10.0),
-            child: TextField(
-              decoration: InputDecoration(
-                labelText: 'Search by name',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
+          if (startDate != null && endDate != null)
+            Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: Text(
+                "Showing Workouts: ${DateFormat.yMMMd().format(startDate!)} - ${DateFormat.yMMMd().format(endDate!)}",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              onChanged: _onSearchChanged,
             ),
-          ),
+
           // Sorting dropdown
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 10.0),
@@ -127,7 +126,23 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
               }).toList(),
             ),
           ),
-          // List of workouts
+
+          // Search field
+          Padding(
+            padding: EdgeInsets.all(10.0),
+            child: TextField(
+              decoration: InputDecoration(
+                labelText: 'Search by name',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+              ),
+              onChanged: _onSearchChanged,
+            ),
+          ),
+
+          // Workout List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: getWorkouts(),
@@ -135,7 +150,17 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
                 if (!snapshot.hasData) {
                   return Center(child: CircularProgressIndicator());
                 }
+
                 final docs = snapshot.data!.docs;
+                if (docs.isEmpty) {
+                  return Center(
+                    child: Text(
+                      "No workouts found.",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                    ),
+                  );
+                }
+
                 return ListView.builder(
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
