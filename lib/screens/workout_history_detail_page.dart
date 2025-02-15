@@ -33,13 +33,11 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
     super.dispose();
   }
 
-  /// Calculate total volume across all strength exercises.
-  /// (Cardio exercises are not included in the volume calculation.)
+  /// Calculate total volume across all strength exercises (only those where 'sets' is a List).
   int _calculateTotalVolume() {
     int totalVolume = 0;
     final exercises = widget.workout['exercises'] ?? [];
     for (var exercise in exercises) {
-      // For strength exercises, sets is expected to be a List.
       if (exercise['sets'] is List) {
         for (var set in exercise['sets']) {
           final weight = (set['weight'] ?? 0) as num;
@@ -67,8 +65,7 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
     }
   }
 
-  /// Builds UI for a cardio exercise when the data is stored in a nested Map.
-  /// (This function is used if the 'sets' field is a Map.)
+  /// Builds UI for a cardio exercise when data is stored as a nested Map in 'sets'.
   Widget _buildCardioFields(Map<String, dynamic> exercise) {
     final setsField = exercise['sets'];
     if (setsField is Map<String, dynamic>) {
@@ -103,18 +100,18 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
     return Text("No cardio data logged");
   }
 
-  /// Builds UI for a strength exercise.
-  /// Modified to check if a set contains cardio fields (like duration or miles)
-  /// and display them accordingly.
+  /// Builds UI for a strength exercise (where 'sets' is a List).
+  /// Additionally, if a set has fields that look like cardio data (duration, miles, reps)
+  /// and no weight, it will display that data.
   List<Widget> _buildStrengthSets(List setsList) {
     final widgets = <Widget>[];
     for (int i = 0; i < setsList.length; i++) {
       final setData = setsList[i] as Map<String, dynamic>;
-
-      // Check if the set contains fields indicating cardio data.
-      if (setData.containsKey('duration') ||
+      // Check if the set appears to have cardio data.
+      if ((setData.containsKey('duration') ||
           setData.containsKey('miles') ||
-          setData.containsKey('reps') && !setData.containsKey('weight')) {
+          setData.containsKey('reps')) &&
+          !setData.containsKey('weight')) {
         final duration = setData['duration'];
         final miles = setData['miles'];
         final reps = setData['reps'];
@@ -137,7 +134,7 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
               .toList(),
         ));
       } else {
-        // Otherwise, assume it's a strength set.
+        // Otherwise, treat as a strength set.
         final weight = setData['weight'];
         final reps = setData['reps'];
         if (weight == null && reps == null) continue;
@@ -155,12 +152,13 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
     // Convert Firestore timestamp to DateTime.
     DateTime workoutDate = DateTime.now();
     if (widget.workout['timestamp'] is Timestamp) {
-      workoutDate =
-          (widget.workout['timestamp'] as Timestamp).toDate();
+      workoutDate = (widget.workout['timestamp'] as Timestamp).toDate();
     }
 
     final exercises = widget.workout['exercises'] ?? [];
     final totalVolume = _calculateTotalVolume();
+    // Retrieve the workout-level description.
+    final workoutDescription = widget.workout['description'] ?? '';
 
     return Scaffold(
       appBar: AppBar(
@@ -169,12 +167,23 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // Workout date and total volume.
+          // Workout date.
           Text(
             "Date: ${DateFormat.yMMMd().format(workoutDate)}",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 8),
+          // Workout-level description.
+          if (workoutDescription.isNotEmpty) ...[
+            Text(
+              "Description:",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 4),
+            Text(workoutDescription),
+            SizedBox(height: 16),
+          ],
+          // Total volume with "lbs".
           Text(
             "Total Volume Lifted: $totalVolume lbs",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
@@ -189,6 +198,7 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
           ...exercises.map<Widget>((exercise) {
             final exerciseName = exercise['name'] ?? 'Unnamed Exercise';
             final setsField = exercise['sets'];
+
             return Card(
               margin: EdgeInsets.symmetric(vertical: 4),
               child: Padding(
@@ -203,10 +213,10 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
                           fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     SizedBox(height: 4),
-                    // Cardio exercise: when sets is a Map (nested fields).
+                    // If sets is a Map, assume it's a cardio exercise.
                     if (setsField is Map<String, dynamic>)
                       _buildCardioFields(exercise),
-                    // Strength exercise: when sets is a List.
+                    // If sets is a List, assume it's a strength exercise.
                     if (setsField is List)
                       ..._buildStrengthSets(setsField),
                     // Fallback.
@@ -218,7 +228,7 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
             );
           }).toList(),
           SizedBox(height: 24),
-          // Comments.
+          // Comments section.
           Text(
             "Comments:",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
