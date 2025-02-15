@@ -57,7 +57,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
   }
 
-
   Future<void> _finishWorkout() async {
     _timer?.cancel();
 
@@ -86,7 +85,15 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           onExercisesSelected: (selected) {
             setState(() {
               for (var exercise in selected) {
-                exercise['sets'] = exercise['sets'] ?? [];
+                // Ensure 'sets' is a List.
+                if (!(exercise['sets'] is List)) {
+                  exercise['sets'] = [];
+                }
+                // If 'category' is coming as a List, join its elements to form a String.
+                if (exercise['category'] is List) {
+                  exercise['category'] =
+                      (exercise['category'] as List).join(', ');
+                }
                 _selectedExercises.add(exercise);
               }
             });
@@ -102,12 +109,46 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
   }
 
+  /// Helper to determine the default set fields based on category.
+  Map<String, dynamic> _getDefaultSet(String category) {
+    final lower = category.toLowerCase();
+    if (lower.contains("cardio")) {
+      // Cardio: track both miles (distance) and duration (seconds).
+      return {'miles': 0.0, 'duration': 0};
+    } else if (lower.contains("lap")) {
+      // Laps: record duration and reps.
+      return {'reps': 0, 'duration': 0};
+    } else if (lower.contains("isometric")) {
+      // Isometrics: include duration along with reps and weight.
+      return {'reps': 0, 'weight': 0.0, 'duration': 0};
+    } else if (lower.contains("stretching") ||
+        lower.contains("mobility") ||
+        lower == "duration") {
+      // Stretching/Mobility (or a generic "duration" category): record duration only.
+      return {'duration': 0};
+    } else if (lower.contains("assisted body")) {
+      // Assisted Body: allow weight and reps.
+      return {'reps': 0, 'weight': 0.0};
+    } else if (lower.contains("non-weight")) {
+      // Non-weight: record reps only.
+      return {'reps': 0};
+    } else {
+      // Default (weighted exercise): record reps and weight.
+      return {'reps': 0, 'weight': 0.0};
+    }
+  }
+
   void _addSet(int exerciseIndex) {
+    final exercise = _selectedExercises[exerciseIndex];
+    final category =
+        exercise['category']?.toString() ?? ""; // Now a String due to our fix.
+    final newSet = _getDefaultSet(category);
+
     setState(() {
-      if (_selectedExercises[exerciseIndex]['sets'] == null) {
-        _selectedExercises[exerciseIndex]['sets'] = [];
+      if (exercise['sets'] == null) {
+        exercise['sets'] = [];
       }
-      _selectedExercises[exerciseIndex]['sets'].add({'reps': 0, 'weight': 0.0});
+      exercise['sets'].add(newSet);
     });
     Future.delayed(Duration(milliseconds: 200), () {
       _scrollController.animateTo(
@@ -133,6 +174,19 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   void _updateWeight(int exerciseIndex, int setIndex, double weight) {
     setState(() {
       _selectedExercises[exerciseIndex]['sets'][setIndex]['weight'] = weight;
+    });
+  }
+
+  void _updateDuration(int exerciseIndex, int setIndex, int duration) {
+    setState(() {
+      _selectedExercises[exerciseIndex]['sets'][setIndex]['duration'] =
+          duration;
+    });
+  }
+
+  void _updateMiles(int exerciseIndex, int setIndex, double miles) {
+    setState(() {
+      _selectedExercises[exerciseIndex]['sets'][setIndex]['miles'] = miles;
     });
   }
 
@@ -216,7 +270,9 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                 children: [
                                   Text(
                                     exercise['name'] ?? 'Unnamed Exercise',
-                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold),
                                   ),
                                   Text(
                                     "${exercise['category'] ?? 'Unknown Category'} | ${exercise['bodyPart'] ?? 'Unknown Body Part'}${exercise['subcategory'] != null ? ' (${exercise['subcategory']})' : ''}",
@@ -232,53 +288,111 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                   ),
                                   IconButton(
                                     icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => _removeExercise(exerciseIndex),
+                                    onPressed: () =>
+                                        _removeExercise(exerciseIndex),
                                   ),
                                 ],
                               ),
                             ],
                           ),
                           Column(
-                            children: List.generate(exercise['sets'].length, (setIndex) {
+                            children: List.generate(
+                                exercise['sets'].length, (setIndex) {
                               var set = exercise['sets'][setIndex];
                               return Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text("Set ${setIndex + 1}"),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        width: 50,
-                                        child: TextField(
-                                          decoration: InputDecoration(labelText: "Reps"),
-                                          keyboardType: TextInputType.number,
-                                          onChanged: (value) {
-                                            _updateReps(exerciseIndex, setIndex, int.tryParse(value) ?? 0);
-                                          },
-                                        ),
-                                      ),
-                                      SizedBox(width: 10),
-                                      Container(
-                                        width: 70,
-                                        child: TextField(
-                                          decoration: InputDecoration(labelText: "Weight (lbs)"),
-                                          keyboardType: TextInputType.numberWithOptions(decimal: true),
-                                          onChanged: (value) {
-                                            _updateWeight(exerciseIndex, setIndex, double.tryParse(value) ?? 0.0);
-                                          },
-                                        ),
-                                      ),
-                                    ],
+                                  Expanded(
+                                    child: Row(
+                                      mainAxisAlignment:
+                                      MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        if (set.containsKey('reps'))
+                                          Container(
+                                            width: 50,
+                                            child: TextField(
+                                              decoration: InputDecoration(
+                                                  labelText: "Reps"),
+                                              keyboardType:
+                                              TextInputType.number,
+                                              onChanged: (value) {
+                                                _updateReps(
+                                                    exerciseIndex,
+                                                    setIndex,
+                                                    int.tryParse(value) ?? 0);
+                                              },
+                                            ),
+                                          ),
+                                        if (set.containsKey('weight'))
+                                          Container(
+                                            width: 70,
+                                            child: TextField(
+                                              decoration: InputDecoration(
+                                                  labelText: "Weight (lbs)"),
+                                              keyboardType:
+                                              TextInputType.numberWithOptions(
+                                                  decimal: true),
+                                              onChanged: (value) {
+                                                _updateWeight(
+                                                    exerciseIndex,
+                                                    setIndex,
+                                                    double.tryParse(value) ??
+                                                        0.0);
+                                              },
+                                            ),
+                                          ),
+                                        if (set.containsKey('duration'))
+                                          Container(
+                                            width: 70,
+                                            child: TextField(
+                                              decoration: InputDecoration(
+                                                  labelText: "Duration (sec)"),
+                                              keyboardType:
+                                              TextInputType.number,
+                                              onChanged: (value) {
+                                                _updateDuration(
+                                                    exerciseIndex,
+                                                    setIndex,
+                                                    int.tryParse(value) ?? 0);
+                                              },
+                                            ),
+                                          ),
+                                        if (set.containsKey('miles'))
+                                          Container(
+                                            width: 70,
+                                            child: TextField(
+                                              decoration: InputDecoration(
+                                                  labelText: "Miles"),
+                                              keyboardType:
+                                              TextInputType.numberWithOptions(
+                                                  decimal: true),
+                                              onChanged: (value) {
+                                                _updateMiles(
+                                                    exerciseIndex,
+                                                    setIndex,
+                                                    double.tryParse(value) ??
+                                                        0.0);
+                                              },
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                                   ),
                                   Row(
                                     children: [
                                       IconButton(
-                                        icon: Icon(Icons.add, color: Colors.green),
-                                        onPressed: () => _addSet(exerciseIndex),
+                                        icon: Icon(Icons.add,
+                                            color: Colors.green),
+                                        onPressed: () =>
+                                            _addSet(exerciseIndex),
                                       ),
                                       IconButton(
-                                        icon: Icon(Icons.remove, color: Colors.red),
-                                        onPressed: () => _removeSet(exerciseIndex, setIndex),
+                                        icon: Icon(Icons.remove,
+                                            color: Colors.red),
+                                        onPressed: () =>
+                                            _removeSet(exerciseIndex, setIndex),
                                       ),
                                     ],
                                   ),
@@ -293,20 +407,18 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 },
               ),
             ),
-            // Swapped button positions
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                // Finish Workout button is now on the left
                 ElevatedButton(
                   onPressed: _finishWorkout,
                   child: Text('Finish Workout'),
                 ),
-                // Cancel Workout button is now on the right
                 ElevatedButton(
                   onPressed: _cancelWorkout,
                   child: Text('Cancel Workout'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  style:
+                  ElevatedButton.styleFrom(backgroundColor: Colors.red),
                 ),
               ],
             ),
