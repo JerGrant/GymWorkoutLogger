@@ -17,10 +17,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
   User? _user;
 
-  // Use the correct asset path for your placeholder image
+  // Placeholder image if Firestore doesn't have a profileImage
   String profileImage = "lib/assets/prog-pic.jpg";
 
-  int workoutStreak = 0;
   String firstName = "";
   String lastName = "";
   String city = "";
@@ -38,8 +37,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
   bool isLoading = true;
   bool isSaving = false;
+  bool isEditing = false;
 
-  // Sorting flag for progress pictures: true means newest first.
+  // Sorting flag for progress pictures: true => newest first
   bool _isNewestFirst = true;
 
   List<String> states = [
@@ -85,7 +85,6 @@ class _ProfilePageState extends State<ProfilePage> {
           inches = data['inches'] ?? 0;
           weight = (data['weight'] ?? 0.0).toDouble();
 
-          // If Firestore has a URL for profileImage, use it; otherwise default to local asset
           profileImage = data['profileImage'] ?? "lib/assets/prog-pic.jpg";
 
           _firstNameController.text = firstName;
@@ -102,6 +101,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _uploadProfileImage() async {
+    if (!isEditing) return; // Only allow changing image in edit mode
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
     File file = File(pickedFile.path);
@@ -142,7 +142,7 @@ class _ProfilePageState extends State<ProfilePage> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Cancel, returns null
+                Navigator.of(context).pop(); // Cancel => null
               },
               child: Text("Cancel"),
             ),
@@ -214,7 +214,6 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         );
       }
-
       print("Profile updated successfully!");
     } catch (e) {
       if (mounted) {
@@ -307,18 +306,104 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  /// Displays read-only user info when `isEditing` is false
+  Widget _buildReadOnlyFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Minimal text for user info
+        Text(
+          "$firstName $lastName",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 6),
+        Text("$city, $selectedState"),
+        SizedBox(height: 6),
+        Text("Height: $feet' $inches\""),
+        SizedBox(height: 6),
+        Text("Weight: $weight lbs"),
+      ],
+    );
+  }
+
+  /// Displays the full editable fields when `isEditing` is true
+  Widget _buildEditableFields() {
+    return Column(
+      children: [
+        TextField(
+          controller: _firstNameController,
+          decoration: InputDecoration(labelText: "First Name"),
+        ),
+        TextField(
+          controller: _lastNameController,
+          decoration: InputDecoration(labelText: "Last Name"),
+        ),
+        TextField(
+          controller: _cityController,
+          decoration: InputDecoration(labelText: "City"),
+        ),
+        IgnorePointer(
+          ignoring: !isEditing,
+          child: DropdownButton<String>(
+            value: selectedState,
+            items: states.map((state) {
+              return DropdownMenuItem(value: state, child: Text(state));
+            }).toList(),
+            onChanged: (value) {
+              setState(() => selectedState = value!);
+            },
+          ),
+        ),
+        TextField(
+          controller: _feetController,
+          decoration: InputDecoration(labelText: "Feet"),
+          keyboardType: TextInputType.number,
+        ),
+        TextField(
+          controller: _inchesController,
+          decoration: InputDecoration(labelText: "Inches"),
+          keyboardType: TextInputType.number,
+        ),
+        TextField(
+          controller: _weightController,
+          decoration: InputDecoration(labelText: "Weight (lbs)"),
+          keyboardType: TextInputType.number,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Profile")),
+      appBar: AppBar(
+        title: Text("Profile"),
+        actions: [
+          IconButton(
+            icon: Icon(isEditing ? Icons.check : Icons.edit),
+            onPressed: () async {
+              if (isEditing) {
+                // If we were already editing, tapping the icon means "Save"
+                await _saveProfile();
+              }
+              setState(() {
+                isEditing = !isEditing;
+              });
+            },
+          ),
+        ],
+      ),
       body: isLoading
           ? Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            // Profile image (tap only works in edit mode)
             GestureDetector(
-              onTap: _uploadProfileImage,
+              onTap: () {
+                if (isEditing) _uploadProfileImage();
+              },
               child: CircleAvatar(
                 radius: 50,
                 backgroundImage: profileImage.startsWith('http')
@@ -327,53 +412,17 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
             SizedBox(height: 10),
-            Text("Tap to change profile image"),
+            // Only show "Tap to change" hint if editing
+            if (isEditing) Text("Tap to change profile image"),
             SizedBox(height: 20),
-            TextField(
-              controller: _firstNameController,
-              decoration: InputDecoration(labelText: "First Name"),
-            ),
-            TextField(
-              controller: _lastNameController,
-              decoration: InputDecoration(labelText: "Last Name"),
-            ),
-            TextField(
-              controller: _cityController,
-              decoration: InputDecoration(labelText: "City"),
-            ),
-            DropdownButton<String>(
-              value: selectedState,
-              items: states.map((state) {
-                return DropdownMenuItem(value: state, child: Text(state));
-              }).toList(),
-              onChanged: (value) {
-                setState(() => selectedState = value!);
-              },
-            ),
-            TextField(
-              controller: _feetController,
-              decoration: InputDecoration(labelText: "Feet"),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: _inchesController,
-              decoration: InputDecoration(labelText: "Inches"),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: _weightController,
-              decoration: InputDecoration(labelText: "Weight (lbs)"),
-              keyboardType: TextInputType.number,
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: isSaving ? null : _saveProfile,
-              child: isSaving
-                  ? CircularProgressIndicator(color: Colors.white)
-                  : Text("Save Changes"),
-            ),
+
+            // Conditionally render read-only vs. editable fields
+            isEditing ? _buildEditableFields() : _buildReadOnlyFields(),
+
             SizedBox(height: 30),
             Divider(),
+
+            // Progress Pictures
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
