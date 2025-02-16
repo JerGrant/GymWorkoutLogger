@@ -70,6 +70,7 @@ flutter:
   assets:
     - lib/assets/continue-w-google.png
     - lib/assets/splash_icon.jpg
+    - lib/assets/prog-pic.jpg
   # assets:
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg

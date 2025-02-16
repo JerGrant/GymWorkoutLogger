@@ -16,7 +16,9 @@ class _ProfilePageState extends State<ProfilePage> {
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
   User? _user;
-  String profileImage = "assets/images/profile_placeholder.png";
+
+  // Use the correct asset path for your placeholder image
+  String profileImage = "lib/assets/prog-pic.jpg";
 
   int workoutStreak = 0;
   String firstName = "";
@@ -37,13 +39,19 @@ class _ProfilePageState extends State<ProfilePage> {
   bool isLoading = true;
   bool isSaving = false;
 
+  // Sorting flag for progress pictures: true means newest first.
+  bool _isNewestFirst = true;
+
   List<String> states = [
-    "Select State", "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
-    "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana",
-    "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana",
-    "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina",
-    "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina",
-    "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia",
+    "Select State", "Alabama", "Alaska", "Arizona", "Arkansas", "California",
+    "Colorado", "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii",
+    "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana",
+    "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
+    "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
+    "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina",
+    "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania",
+    "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas",
+    "Utah", "Vermont", "Virginia", "Washington", "West Virginia",
     "Wisconsin", "Wyoming"
   ];
 
@@ -76,7 +84,9 @@ class _ProfilePageState extends State<ProfilePage> {
           feet = data['feet'] ?? 0;
           inches = data['inches'] ?? 0;
           weight = (data['weight'] ?? 0.0).toDouble();
-          profileImage = data['profileImage'] ?? "assets/images/profile_placeholder.png";
+
+          // If Firestore has a URL for profileImage, use it; otherwise default to local asset
+          profileImage = data['profileImage'] ?? "lib/assets/prog-pic.jpg";
 
           _firstNameController.text = firstName;
           _lastNameController.text = lastName;
@@ -110,6 +120,68 @@ class _ProfilePageState extends State<ProfilePage> {
       });
     } catch (e) {
       print("Error uploading profile image: $e");
+    }
+  }
+
+  Future<void> _uploadProgressPicture() async {
+    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (pickedFile == null) return;
+    File file = File(pickedFile.path);
+
+    // Prompt user for a caption or notes
+    String? caption = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        final TextEditingController _captionController = TextEditingController();
+        return AlertDialog(
+          title: Text("Enter Caption/Notes"),
+          content: TextField(
+            controller: _captionController,
+            decoration: InputDecoration(hintText: "Caption or notes"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Cancel, returns null
+              },
+              child: Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(_captionController.text);
+              },
+              child: Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (caption == null) return;
+
+    try {
+      String filePath = 'progress_pictures/${_user!.uid}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      TaskSnapshot snapshot = await _storage.ref(filePath).putFile(file);
+      String downloadUrl = await snapshot.ref.getDownloadURL();
+
+      await _db
+          .collection('users')
+          .doc(_user!.uid)
+          .collection('progressPictures')
+          .add({
+        'imageUrl': downloadUrl,
+        'caption': caption,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Progress picture uploaded!")),
+      );
+    } catch (e) {
+      print("Error uploading progress picture: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error uploading progress picture.")),
+      );
     }
   }
 
@@ -158,6 +230,83 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Widget _buildProgressPicturesGallery() {
+    if (_user == null) return Container();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: _db
+          .collection('users')
+          .doc(_user!.uid)
+          .collection('progressPictures')
+          .orderBy('timestamp', descending: _isNewestFirst)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Text("Error loading progress pictures.");
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return CircularProgressIndicator();
+        }
+
+        final docs = snapshot.data!.docs;
+        if (docs.isEmpty) {
+          return Text("No progress pictures uploaded yet.");
+        }
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          itemCount: docs.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+          ),
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+            String imageUrl = data['imageUrl'] ?? "";
+            String caption = data['caption'] ?? "";
+            Timestamp? timestamp = data['timestamp'] as Timestamp?;
+            String timeString = timestamp != null
+                ? DateTime.fromMillisecondsSinceEpoch(timestamp.millisecondsSinceEpoch)
+                .toLocal()
+                .toString()
+                : "";
+            return Card(
+              elevation: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: imageUrl.startsWith('http')
+                        ? Image.network(imageUrl, fit: BoxFit.cover)
+                        : Container(color: Colors.grey),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: Text(
+                      caption,
+                      style: TextStyle(fontSize: 12),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                    child: Text(
+                      timeString,
+                      style: TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,9 +329,18 @@ class _ProfilePageState extends State<ProfilePage> {
             SizedBox(height: 10),
             Text("Tap to change profile image"),
             SizedBox(height: 20),
-            TextField(controller: _firstNameController, decoration: InputDecoration(labelText: "First Name")),
-            TextField(controller: _lastNameController, decoration: InputDecoration(labelText: "Last Name")),
-            TextField(controller: _cityController, decoration: InputDecoration(labelText: "City")),
+            TextField(
+              controller: _firstNameController,
+              decoration: InputDecoration(labelText: "First Name"),
+            ),
+            TextField(
+              controller: _lastNameController,
+              decoration: InputDecoration(labelText: "Last Name"),
+            ),
+            TextField(
+              controller: _cityController,
+              decoration: InputDecoration(labelText: "City"),
+            ),
             DropdownButton<String>(
               value: selectedState,
               items: states.map((state) {
@@ -192,9 +350,21 @@ class _ProfilePageState extends State<ProfilePage> {
                 setState(() => selectedState = value!);
               },
             ),
-            TextField(controller: _feetController, decoration: InputDecoration(labelText: "Feet"), keyboardType: TextInputType.number),
-            TextField(controller: _inchesController, decoration: InputDecoration(labelText: "Inches"), keyboardType: TextInputType.number),
-            TextField(controller: _weightController, decoration: InputDecoration(labelText: "Weight (lbs)"), keyboardType: TextInputType.number),
+            TextField(
+              controller: _feetController,
+              decoration: InputDecoration(labelText: "Feet"),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: _inchesController,
+              decoration: InputDecoration(labelText: "Inches"),
+              keyboardType: TextInputType.number,
+            ),
+            TextField(
+              controller: _weightController,
+              decoration: InputDecoration(labelText: "Weight (lbs)"),
+              keyboardType: TextInputType.number,
+            ),
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: isSaving ? null : _saveProfile,
@@ -202,6 +372,48 @@ class _ProfilePageState extends State<ProfilePage> {
                   ? CircularProgressIndicator(color: Colors.white)
                   : Text("Save Changes"),
             ),
+            SizedBox(height: 30),
+            Divider(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Progress Pictures",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Row(
+                  children: [
+                    Text("Sort: "),
+                    DropdownButton<bool>(
+                      value: _isNewestFirst,
+                      items: [
+                        DropdownMenuItem(
+                          child: Text("Newest to Oldest"),
+                          value: true,
+                        ),
+                        DropdownMenuItem(
+                          child: Text("Oldest to Newest"),
+                          value: false,
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _isNewestFirst = value!;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(height: 10),
+            ElevatedButton.icon(
+              onPressed: _uploadProgressPicture,
+              icon: Icon(Icons.upload),
+              label: Text("Upload Progress Picture"),
+            ),
+            SizedBox(height: 10),
+            _buildProgressPicturesGallery(),
           ],
         ),
       ),
