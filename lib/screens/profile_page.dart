@@ -64,7 +64,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _getUser() async {
     setState(() => isLoading = true);
     _user = _auth.currentUser;
-
     if (_user != null) {
       await _fetchUserProfile(_user!.uid);
     }
@@ -84,7 +83,6 @@ class _ProfilePageState extends State<ProfilePage> {
           feet = data['feet'] ?? 0;
           inches = data['inches'] ?? 0;
           weight = (data['weight'] ?? 0.0).toDouble();
-
           profileImage = data['profileImage'] ?? "lib/assets/prog-pic.jpg";
 
           _firstNameController.text = firstName;
@@ -105,16 +103,13 @@ class _ProfilePageState extends State<ProfilePage> {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
     File file = File(pickedFile.path);
-
     try {
       String filePath = 'profile_images/${_user!.uid}.jpg';
       TaskSnapshot snapshot = await _storage.ref(filePath).putFile(file);
       String downloadUrl = await snapshot.ref.getDownloadURL();
-
       await _db.collection('users').doc(_user!.uid).set({
         'profileImage': downloadUrl,
       }, SetOptions(merge: true));
-
       setState(() {
         profileImage = downloadUrl;
       });
@@ -127,7 +122,6 @@ class _ProfilePageState extends State<ProfilePage> {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
     File file = File(pickedFile.path);
-
     // Prompt user for a caption or notes
     String? caption = await showDialog<String>(
       context: context,
@@ -141,29 +135,22 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Cancel => null
-              },
+              onPressed: () => Navigator.of(context).pop(), // Cancel => null
               child: Text("Cancel"),
             ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop(_captionController.text);
-              },
+              onPressed: () => Navigator.of(context).pop(_captionController.text),
               child: Text("Save"),
             ),
           ],
         );
       },
     );
-
     if (caption == null) return;
-
     try {
       String filePath = 'progress_pictures/${_user!.uid}/${DateTime.now().millisecondsSinceEpoch}.jpg';
       TaskSnapshot snapshot = await _storage.ref(filePath).putFile(file);
       String downloadUrl = await snapshot.ref.getDownloadURL();
-
       await _db
           .collection('users')
           .doc(_user!.uid)
@@ -173,7 +160,6 @@ class _ProfilePageState extends State<ProfilePage> {
         'caption': caption,
         'timestamp': FieldValue.serverTimestamp(),
       });
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Progress picture uploaded!")),
       );
@@ -190,9 +176,7 @@ class _ProfilePageState extends State<ProfilePage> {
       print("No authenticated user found.");
       return;
     }
-
     setState(() => isSaving = true);
-
     try {
       await _db.collection('users').doc(_user!.uid).set({
         'firstName': _firstNameController.text,
@@ -203,7 +187,6 @@ class _ProfilePageState extends State<ProfilePage> {
         'inches': int.tryParse(_inchesController.text) ?? 0,
         'weight': double.tryParse(_weightController.text) ?? 0.0,
       }, SetOptions(merge: true));
-
       if (mounted) {
         setState(() => isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -231,7 +214,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildProgressPicturesGallery() {
     if (_user == null) return Container();
-
     return StreamBuilder<QuerySnapshot>(
       stream: _db
           .collection('users')
@@ -240,18 +222,10 @@ class _ProfilePageState extends State<ProfilePage> {
           .orderBy('timestamp', descending: _isNewestFirst)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Text("Error loading progress pictures.");
-        }
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return CircularProgressIndicator();
-        }
-
+        if (snapshot.hasError) return Text("Error loading progress pictures.");
+        if (snapshot.connectionState == ConnectionState.waiting) return CircularProgressIndicator();
         final docs = snapshot.data!.docs;
-        if (docs.isEmpty) {
-          return Text("No progress pictures uploaded yet.");
-        }
-
+        if (docs.isEmpty) return Text("No progress pictures uploaded yet.");
         return GridView.builder(
           shrinkWrap: true,
           physics: NeverScrollableScrollPhysics(),
@@ -306,12 +280,11 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  /// Displays read-only user info when `isEditing` is false
+  /// Displays read-only user info when not editing.
   Widget _buildReadOnlyFields() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Minimal text for user info
         Text(
           "$firstName $lastName",
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -326,7 +299,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  /// Displays the full editable fields when `isEditing` is true
+  /// Displays the full editable fields when in edit mode.
   Widget _buildEditableFields() {
     return Column(
       children: [
@@ -373,6 +346,25 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // Method to display the full profile image in a dialog.
+  void _showFullImage() {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.all(10),
+        child: GestureDetector(
+          onTap: () => Navigator.of(context).pop(),
+          child: InteractiveViewer(
+            child: profileImage.startsWith('http')
+                ? Image.network(profileImage, fit: BoxFit.contain)
+                : Image.asset(profileImage, fit: BoxFit.contain),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -383,7 +375,6 @@ class _ProfilePageState extends State<ProfilePage> {
             icon: Icon(isEditing ? Icons.check : Icons.edit),
             onPressed: () async {
               if (isEditing) {
-                // If we were already editing, tapping the icon means "Save"
                 await _saveProfile();
               }
               setState(() {
@@ -399,10 +390,14 @@ class _ProfilePageState extends State<ProfilePage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Profile image (tap only works in edit mode)
+            // Profile image: tap to change in edit mode, or display full image otherwise.
             GestureDetector(
               onTap: () {
-                if (isEditing) _uploadProfileImage();
+                if (isEditing) {
+                  _uploadProfileImage();
+                } else {
+                  _showFullImage();
+                }
               },
               child: CircleAvatar(
                 radius: 50,
@@ -412,17 +407,12 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
             SizedBox(height: 10),
-            // Only show "Tap to change" hint if editing
             if (isEditing) Text("Tap to change profile image"),
             SizedBox(height: 20),
-
-            // Conditionally render read-only vs. editable fields
             isEditing ? _buildEditableFields() : _buildReadOnlyFields(),
-
             SizedBox(height: 30),
             Divider(),
-
-            // Progress Pictures
+            // Progress Pictures section
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
