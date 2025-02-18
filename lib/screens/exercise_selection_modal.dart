@@ -24,6 +24,7 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
     selectedExercises = [];
   }
 
+  /// Create a new exercise, add it to Firestore, and auto-add to selectedExercises.
   Future<void> _createNewExercise() async {
     final newExercise = await Navigator.push(
       context,
@@ -31,18 +32,26 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
     );
 
     if (newExercise != null) {
-      setState(() {
-        selectedExercises.add(newExercise);
-      });
+      // Check if it's already in selectedExercises
+      bool alreadySelected = selectedExercises.any((ex) => ex['id'] == newExercise['id']);
+      if (!alreadySelected) {
+        setState(() {
+          // Auto-add the newly created exercise
+          selectedExercises.add(newExercise);
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Select Exercises')),
+      appBar: AppBar(
+        title: Text('Select Exercises'),
+      ),
       body: Column(
         children: [
+          // Search field
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
@@ -58,6 +67,8 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
               },
             ),
           ),
+
+          // Sort dropdown
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: DropdownButtonFormField<String>(
@@ -79,6 +90,8 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
               },
             ),
           ),
+
+          // Exercise list
           Expanded(
             child: StreamBuilder(
               stream: FirebaseFirestore.instance
@@ -88,33 +101,54 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
                   .orderBy('name')
                   .snapshots(),
               builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                if (!snapshot.hasData) return Center(child: CircularProgressIndicator());
+                if (!snapshot.hasData) {
+                  return Center(child: CircularProgressIndicator());
+                }
 
+                // Convert Firestore docs to local List<Map<String, dynamic>>
                 var exercises = snapshot.data!.docs.map((doc) {
                   return {'id': doc.id, ...doc.data() as Map<String, dynamic>};
-                }).where((data) {
-                  return data['name'].toLowerCase().contains(searchQuery.toLowerCase());
                 }).toList();
 
-                // Sorting logic
+                // Filter by search query
+                exercises = exercises.where((data) {
+                  final name = (data['name'] ?? '').toString().toLowerCase();
+                  return name.contains(searchQuery.toLowerCase());
+                }).toList();
+
+                // Sort based on user selection
                 exercises.sort((a, b) {
+                  final aName = (a['name'] ?? '').toString();
+                  final bName = (b['name'] ?? '').toString();
+                  final aCategory = (a['category'] ?? '').toString();
+                  final bCategory = (b['category'] ?? '').toString();
+                  final aBody = (a['bodyPart'] ?? '').toString();
+                  final bBody = (b['bodyPart'] ?? '').toString();
+
                   if (sortBy == "Name") {
-                    return a['name'].compareTo(b['name']);
+                    return aName.compareTo(bName);
                   } else if (sortBy == "Category") {
-                    return a['category'].compareTo(b['category']);
+                    return aCategory.compareTo(bCategory);
                   } else if (sortBy == "Body Part") {
-                    return a['bodyPart'].compareTo(b['bodyPart']);
+                    return aBody.compareTo(bBody);
                   }
                   return 0;
                 });
 
+                // Grouping logic
                 Map<String, List<Map<String, dynamic>>> groupedExercises = {};
                 for (var exercise in exercises) {
-                  String header = sortBy == "Category"
-                      ? exercise['category']
-                      : sortBy == "Body Part"
-                      ? exercise['bodyPart']
-                      : exercise['name'][0].toUpperCase();
+                  // Decide the header based on sortBy
+                  String header;
+                  if (sortBy == "Category") {
+                    header = (exercise['category'] ?? 'Unknown').toString();
+                  } else if (sortBy == "Body Part") {
+                    header = (exercise['bodyPart'] ?? 'Unknown').toString();
+                  } else {
+                    // "Name" or fallback
+                    final name = (exercise['name'] ?? 'Unknown').toString();
+                    header = name.isNotEmpty ? name[0].toUpperCase() : 'Unknown';
+                  }
 
                   if (!groupedExercises.containsKey(header)) {
                     groupedExercises[header] = [];
@@ -122,11 +156,13 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
                   groupedExercises[header]!.add(exercise);
                 }
 
+                // Build list UI
                 return ListView(
                   children: groupedExercises.entries.map((entry) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Group header
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                           child: Text(
@@ -134,17 +170,29 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
                             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                         ),
+                        // Items in this group
                         ...entry.value.map((data) {
+                          // If data is in selectedExercises, it's "checked"
                           bool isSelected = selectedExercises.any((ex) => ex['id'] == data['id']);
                           return CheckboxListTile(
                             title: Text(data['name'] ?? 'Unknown'),
-                            subtitle: Text("Category: ${data['category']}, Body Part: ${data['bodyPart']}"),
+                            subtitle: Text(
+                              "Category: ${data['category'] ?? 'N/A'}, "
+                                  "Body Part: ${data['bodyPart'] ?? 'N/A'}",
+                            ),
                             value: isSelected,
                             onChanged: (bool? value) {
                               setState(() {
                                 if (value == true) {
-                                  selectedExercises.add(data);
+                                  // Only add if not already in list
+                                  bool alreadySelected = selectedExercises.any(
+                                        (ex) => ex['id'] == data['id'],
+                                  );
+                                  if (!alreadySelected) {
+                                    selectedExercises.add(data);
+                                  }
                                 } else {
+                                  // Uncheck => remove from list
                                   selectedExercises.removeWhere((ex) => ex['id'] == data['id']);
                                 }
                               });
@@ -160,16 +208,20 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
           ),
         ],
       ),
+
+      // Two FABs => unique heroTags
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           FloatingActionButton(
+            heroTag: "fabCreateExercise", // Unique tag
             onPressed: _createNewExercise,
             child: Icon(Icons.add),
             tooltip: 'Create New Exercise',
           ),
           SizedBox(height: 10),
           FloatingActionButton(
+            heroTag: "fabConfirmSelection", // Unique tag
             onPressed: () {
               widget.onExercisesSelected(selectedExercises);
               Navigator.pop(context);

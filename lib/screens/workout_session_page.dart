@@ -6,6 +6,11 @@ import 'dart:async';
 import 'package:gymworkoutlogger/screens/exercise_selection_modal.dart';
 
 class WorkoutSessionPage extends StatefulWidget {
+  // Optional parameter to preload workout data from a favorited workout.
+  final Map<String, dynamic>? preloadedWorkout;
+
+  const WorkoutSessionPage({Key? key, this.preloadedWorkout}) : super(key: key);
+
   @override
   _WorkoutSessionPageState createState() => _WorkoutSessionPageState();
 }
@@ -25,6 +30,13 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   @override
   void initState() {
     super.initState();
+    if (widget.preloadedWorkout != null) {
+      _workoutName = widget.preloadedWorkout!['name'] ?? "Untitled Workout";
+      _workoutDescription = widget.preloadedWorkout!['description'] ?? "";
+      _selectedExercises = widget.preloadedWorkout!['exercises'] != null
+          ? List<Map<String, dynamic>>.from(widget.preloadedWorkout!['exercises'])
+          : [];
+    }
     _startWorkout();
   }
 
@@ -37,7 +49,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       'duration': 0,
       'name': _workoutName,
       'description': _workoutDescription,
-      'exercises': [],
+      'exercises': _selectedExercises,
     });
 
     _startTimer();
@@ -76,6 +88,30 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     Navigator.pop(context);
   }
 
+  /// Helper function that converts specified fields to String if needed.
+  Map<String, dynamic> convertExerciseFields(Map<String, dynamic> exercise) {
+    // Fields expected to be Strings.
+    List<String> fields = ['name', 'category', 'bodyPart', 'subcategory'];
+    Map<String, dynamic> newExercise = Map.from(exercise);
+    for (var field in fields) {
+      if (newExercise.containsKey(field)) {
+        if (newExercise[field] is List) {
+          newExercise[field] =
+              (newExercise[field] as List).map((e) => e.toString()).join(', ');
+        } else if (newExercise[field] == null) {
+          newExercise[field] = '';
+        }
+      } else {
+        newExercise[field] = '';
+      }
+    }
+    // Ensure 'sets' is a list.
+    if (!(newExercise['sets'] is List)) {
+      newExercise['sets'] = [];
+    }
+    return newExercise;
+  }
+
   void _openExerciseSelection() {
     Navigator.push(
       context,
@@ -85,16 +121,9 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           onExercisesSelected: (selected) {
             setState(() {
               for (var exercise in selected) {
-                // Ensure 'sets' is a List.
-                if (!(exercise['sets'] is List)) {
-                  exercise['sets'] = [];
-                }
-                // If 'category' is coming as a List, join its elements to form a String.
-                if (exercise['category'] is List) {
-                  exercise['category'] =
-                      (exercise['category'] as List).join(', ');
-                }
-                _selectedExercises.add(exercise);
+                // Convert the exercise fields.
+                Map<String, dynamic> fixedExercise = convertExerciseFields(exercise);
+                _selectedExercises.add(fixedExercise);
               }
             });
           },
@@ -109,39 +138,31 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
   }
 
-  /// Helper to determine the default set fields based on category.
+  /// Helper to determine default set fields based on category.
   Map<String, dynamic> _getDefaultSet(String category) {
     final lower = category.toLowerCase();
     if (lower.contains("cardio")) {
-      // Cardio: track both miles (distance) and duration (seconds).
       return {'miles': 0.0, 'duration': 0};
     } else if (lower.contains("lap")) {
-      // Laps: record duration and reps.
       return {'reps': 0, 'duration': 0};
     } else if (lower.contains("isometric")) {
-      // Isometrics: include duration along with reps and weight.
       return {'reps': 0, 'weight': 0.0, 'duration': 0};
     } else if (lower.contains("stretching") ||
         lower.contains("mobility") ||
         lower == "duration") {
-      // Stretching/Mobility (or a generic "duration" category): record duration only.
       return {'duration': 0};
     } else if (lower.contains("assisted body")) {
-      // Assisted Body: allow weight and reps.
       return {'reps': 0, 'weight': 0.0};
     } else if (lower.contains("non-weight")) {
-      // Non-weight: record reps only.
       return {'reps': 0};
     } else {
-      // Default (weighted exercise): record reps and weight.
       return {'reps': 0, 'weight': 0.0};
     }
   }
 
   void _addSet(int exerciseIndex) {
     final exercise = _selectedExercises[exerciseIndex];
-    final category =
-        exercise['category']?.toString() ?? ""; // Now a String due to our fix.
+    final category = exercise['category']?.toString() ?? "";
     final newSet = _getDefaultSet(category);
 
     setState(() {
@@ -179,8 +200,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
   void _updateDuration(int exerciseIndex, int setIndex, int duration) {
     setState(() {
-      _selectedExercises[exerciseIndex]['sets'][setIndex]['duration'] =
-          duration;
+      _selectedExercises[exerciseIndex]['sets'][setIndex]['duration'] = duration;
     });
   }
 
@@ -198,7 +218,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     if (hours > 0) {
       return "${hours}h ${minutes}m ${remainingSeconds}s";
     }
-
     return "${minutes}m ${remainingSeconds}s";
   }
 
@@ -225,6 +244,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           children: [
             TextField(
               decoration: InputDecoration(labelText: 'Workout Name'),
+              controller: TextEditingController(text: _workoutName),
               onChanged: (value) {
                 setState(() {
                   _workoutName = value;
@@ -233,6 +253,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
             ),
             TextField(
               decoration: InputDecoration(labelText: 'Description'),
+              controller: TextEditingController(text: _workoutDescription),
               onChanged: (value) {
                 setState(() {
                   _workoutDescription = value;
@@ -270,9 +291,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                 children: [
                                   Text(
                                     exercise['name'] ?? 'Unnamed Exercise',
-                                    style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold),
+                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                                   ),
                                   Text(
                                     "${exercise['category'] ?? 'Unknown Category'} | ${exercise['bodyPart'] ?? 'Unknown Body Part'}${exercise['subcategory'] != null ? ' (${exercise['subcategory']})' : ''}",
@@ -288,40 +307,31 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                   ),
                                   IconButton(
                                     icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () =>
-                                        _removeExercise(exerciseIndex),
+                                    onPressed: () => _removeExercise(exerciseIndex),
                                   ),
                                 ],
                               ),
                             ],
                           ),
                           Column(
-                            children: List.generate(
-                                exercise['sets'].length, (setIndex) {
+                            children: List.generate(exercise['sets'].length, (setIndex) {
                               var set = exercise['sets'][setIndex];
                               return Row(
-                                mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text("Set ${setIndex + 1}"),
                                   Expanded(
                                     child: Row(
-                                      mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
+                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                       children: [
                                         if (set.containsKey('reps'))
                                           Container(
                                             width: 50,
                                             child: TextField(
-                                              decoration: InputDecoration(
-                                                  labelText: "Reps"),
-                                              keyboardType:
-                                              TextInputType.number,
+                                              decoration: InputDecoration(labelText: "Reps"),
+                                              keyboardType: TextInputType.number,
                                               onChanged: (value) {
-                                                _updateReps(
-                                                    exerciseIndex,
-                                                    setIndex,
-                                                    int.tryParse(value) ?? 0);
+                                                _updateReps(exerciseIndex, setIndex, int.tryParse(value) ?? 0);
                                               },
                                             ),
                                           ),
@@ -329,17 +339,10 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                           Container(
                                             width: 70,
                                             child: TextField(
-                                              decoration: InputDecoration(
-                                                  labelText: "Weight (lbs)"),
-                                              keyboardType:
-                                              TextInputType.numberWithOptions(
-                                                  decimal: true),
+                                              decoration: InputDecoration(labelText: "Weight (lbs)"),
+                                              keyboardType: TextInputType.numberWithOptions(decimal: true),
                                               onChanged: (value) {
-                                                _updateWeight(
-                                                    exerciseIndex,
-                                                    setIndex,
-                                                    double.tryParse(value) ??
-                                                        0.0);
+                                                _updateWeight(exerciseIndex, setIndex, double.tryParse(value) ?? 0.0);
                                               },
                                             ),
                                           ),
@@ -347,15 +350,10 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                           Container(
                                             width: 70,
                                             child: TextField(
-                                              decoration: InputDecoration(
-                                                  labelText: "Duration (sec)"),
-                                              keyboardType:
-                                              TextInputType.number,
+                                              decoration: InputDecoration(labelText: "Duration (sec)"),
+                                              keyboardType: TextInputType.number,
                                               onChanged: (value) {
-                                                _updateDuration(
-                                                    exerciseIndex,
-                                                    setIndex,
-                                                    int.tryParse(value) ?? 0);
+                                                _updateDuration(exerciseIndex, setIndex, int.tryParse(value) ?? 0);
                                               },
                                             ),
                                           ),
@@ -363,17 +361,10 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                           Container(
                                             width: 70,
                                             child: TextField(
-                                              decoration: InputDecoration(
-                                                  labelText: "Miles"),
-                                              keyboardType:
-                                              TextInputType.numberWithOptions(
-                                                  decimal: true),
+                                              decoration: InputDecoration(labelText: "Miles"),
+                                              keyboardType: TextInputType.numberWithOptions(decimal: true),
                                               onChanged: (value) {
-                                                _updateMiles(
-                                                    exerciseIndex,
-                                                    setIndex,
-                                                    double.tryParse(value) ??
-                                                        0.0);
+                                                _updateMiles(exerciseIndex, setIndex, double.tryParse(value) ?? 0.0);
                                               },
                                             ),
                                           ),
@@ -383,16 +374,12 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                   Row(
                                     children: [
                                       IconButton(
-                                        icon: Icon(Icons.add,
-                                            color: Colors.green),
-                                        onPressed: () =>
-                                            _addSet(exerciseIndex),
+                                        icon: Icon(Icons.add, color: Colors.green),
+                                        onPressed: () => _addSet(exerciseIndex),
                                       ),
                                       IconButton(
-                                        icon: Icon(Icons.remove,
-                                            color: Colors.red),
-                                        onPressed: () =>
-                                            _removeSet(exerciseIndex, setIndex),
+                                        icon: Icon(Icons.remove, color: Colors.red),
+                                        onPressed: () => _removeSet(exerciseIndex, setIndex),
                                       ),
                                     ],
                                   ),
@@ -417,8 +404,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 ElevatedButton(
                   onPressed: _cancelWorkout,
                   child: Text('Cancel Workout'),
-                  style:
-                  ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                 ),
               ],
             ),

@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'workout_session_page.dart';
+
 class WorkoutHistoryDetailPage extends StatefulWidget {
   final Map<String, dynamic> workout;
   final String workoutId; // Firestore doc ID for saving comments, etc.
@@ -233,7 +235,7 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           SizedBox(height: 16),
-          // Exercises
+          // Exercises section
           Text(
             "Exercises:",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -256,12 +258,10 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     SizedBox(height: 4),
-                    // If sets is a Map, assume cardio
+                    // Cardio or strength sets display
                     if (setsField is Map<String, dynamic>)
                       _buildCardioFields(exercise),
-                    // If sets is a List, assume strength
                     if (setsField is List) ..._buildStrengthSets(setsField),
-                    // If no sets data
                     if (setsField == null)
                       Text("No data logged for this exercise"),
                   ],
@@ -269,6 +269,24 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
               ),
             );
           }).toList(),
+          // "Start this workout" button appears if this workout is favorited
+          if (widget.workout['favorited'] == true) ...[
+            SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                // Navigate to the workout session page with the current workout as a template.
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => WorkoutSessionPage(
+                      preloadedWorkout: widget.workout,
+                    ),
+                  ),
+                );
+              },
+              child: Text('Start this workout'),
+            ),
+          ],
           SizedBox(height: 24),
           // Comments section
           Text(

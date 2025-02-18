@@ -15,9 +15,21 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
   String? _selectedSubcategory;
 
   final List<String> categories = [
-    "Barbell", "Dumbbell", "Cables", "Machine", "Other",
-    "Weighted Bodyweight", "Assisted Body", "Laps", "Reps", "Cardio Exercises",
-    "Duration", "Kettlebell", "Plyometrics", "Resistance Bands", "Isometrics",
+    "Barbell",
+    "Dumbbell",
+    "Cables",
+    "Machine",
+    "Other",
+    "Weighted Bodyweight",
+    "Assisted Body",
+    "Laps",
+    "Reps",
+    "Cardio Exercises",
+    "Duration",
+    "Kettlebell",
+    "Plyometrics",
+    "Resistance Bands",
+    "Isometrics",
     "Stretching & Mobility"
   ];
 
@@ -38,22 +50,27 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("User not logged in")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("User not logged in")));
       return;
     }
 
-    if (_nameController.text.isEmpty || _selectedCategory == null || _selectedBodyPart == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please fill all required fields")));
+    if (_nameController.text.isEmpty ||
+        _selectedCategory == null ||
+        _selectedBodyPart == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Please fill all required fields")));
       return;
     }
 
     try {
-      await FirebaseFirestore.instance
+      // Create the exercise in Firestore and capture its document reference.
+      DocumentReference docRef = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .collection('exercises')
           .add({
-        'userId': user.uid,  // Ensure the user ID is stored with the exercise
+        'userId': user.uid, // Ensure the user ID is stored with the exercise.
         'name': _nameController.text,
         'category': _selectedCategory,
         'bodyPart': _selectedBodyPart,
@@ -62,7 +79,9 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
+      // Return the newly created exercise, including the document ID.
       Navigator.pop(context, {
+        'id': docRef.id, // Include the doc ID for duplicate checking.
         'name': _nameController.text,
         'category': _selectedCategory,
         'bodyPart': _selectedBodyPart,
@@ -70,7 +89,8 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
         'description': _descriptionController.text,
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to save exercise: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to save exercise: $e")));
     }
   }
 
@@ -90,30 +110,43 @@ class _CreateExercisePageState extends State<CreateExercisePage> {
             DropdownButtonFormField<String>(
               value: _selectedCategory,
               decoration: InputDecoration(labelText: "Category"),
-              items: categories.map((cat) => DropdownMenuItem(value: cat, child: Text(cat))).toList(),
-              onChanged: (value) => setState(() => _selectedCategory = value),
+              items: categories
+                  .map((cat) =>
+                  DropdownMenuItem(value: cat, child: Text(cat)))
+                  .toList(),
+              onChanged: (value) =>
+                  setState(() => _selectedCategory = value),
             ),
             DropdownButtonFormField<String>(
               value: _selectedBodyPart,
               decoration: InputDecoration(labelText: "Body Part"),
-              items: bodyParts.keys.map((part) => DropdownMenuItem(value: part, child: Text(part))).toList(),
-              onChanged: (value) => setState(() {
-                _selectedBodyPart = value;
-                _selectedSubcategory = null; // Reset subcategory when body part changes
-              }),
+              items: bodyParts.keys
+                  .map((part) =>
+                  DropdownMenuItem(value: part, child: Text(part)))
+                  .toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedBodyPart = value;
+                  _selectedSubcategory = null; // Reset subcategory when body part changes.
+                });
+              },
             ),
-            if (_selectedBodyPart != null && bodyParts[_selectedBodyPart]!.isNotEmpty)
+            if (_selectedBodyPart != null &&
+                bodyParts[_selectedBodyPart]!.isNotEmpty)
               DropdownButtonFormField<String>(
                 value: _selectedSubcategory,
                 decoration: InputDecoration(labelText: "Subcategory"),
                 items: bodyParts[_selectedBodyPart]!
-                    .map((subPart) => DropdownMenuItem(value: subPart, child: Text(subPart)))
+                    .map((subPart) => DropdownMenuItem(
+                    value: subPart, child: Text(subPart)))
                     .toList(),
-                onChanged: (value) => setState(() => _selectedSubcategory = value),
+                onChanged: (value) =>
+                    setState(() => _selectedSubcategory = value),
               ),
             TextField(
               controller: _descriptionController,
-              decoration: InputDecoration(labelText: "Description (Optional)"),
+              decoration:
+              InputDecoration(labelText: "Description (Optional)"),
               maxLines: 3,
             ),
             SizedBox(height: 20),
