@@ -6,6 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 
 import 'workout_session_page.dart';
 import 'workout_history_page.dart';
+import 'favorite_workouts_page.dart';
 
 class WorkoutPage extends StatefulWidget {
   @override
@@ -120,9 +121,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
     int streak = 1;
     // Move backward from the last session
     for (int i = sessions.length - 1; i > 0; i--) {
-      // Gap in days between consecutive sessions
       final gap = sessions[i].difference(sessions[i - 1]).inDays;
-      // If gap-1 <= allowedMiss, we keep the chain
       if ((gap - 1) <= allowedMiss) {
         streak++;
       } else {
@@ -217,7 +216,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
     return DateFormat('MMM d, h:mm a').format(dt);
   }
 
-  /// Dialog to configure expected workouts per week
   Future<void> _showStreakSettingsDialog() async {
     int selectedDays = expectedWorkoutDays;
     await showDialog(
@@ -256,7 +254,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
                 setState(() {
                   expectedWorkoutDays = selectedDays;
                 });
-                _fetchWorkoutStats(); // Recalculate streak
+                _fetchWorkoutStats();
               },
             ),
           ],
@@ -265,7 +263,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
     );
   }
 
-  /// Builds a stat card. If [onSettingsTap] is non-null, a gear icon is shown.
   Widget _buildStatCard({
     required String title,
     required String value,
@@ -349,6 +346,9 @@ class _WorkoutPageState extends State<WorkoutPage> {
               SizedBox(height: 20),
               _buildWorkoutStats(),
               SizedBox(height: 20),
+              // New Favorite Workouts Tile
+              _buildFavoriteWorkoutsTile(),
+              SizedBox(height: 20),
               _buildWeeklyChart(),
             ],
           ),
@@ -362,21 +362,22 @@ class _WorkoutPageState extends State<WorkoutPage> {
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => WorkoutSessionPage()));
+          Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => WorkoutSessionPage())
+          );
         },
         child: Text('Start a Workout', style: TextStyle(fontSize: 18)),
       ),
     );
   }
 
-  /// Lays out the six stats in a 2x2x2 grid (two per row).
   Widget _buildWorkoutStats() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text("Workout Stats", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         SizedBox(height: 10),
-
         // Row 1
         Row(
           children: [
@@ -386,7 +387,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
           ],
         ),
         SizedBox(height: 8),
-
         // Row 2
         Row(
           children: [
@@ -396,7 +396,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
           ],
         ),
         SizedBox(height: 8),
-
         // Row 3
         Row(
           children: [
@@ -416,7 +415,29 @@ class _WorkoutPageState extends State<WorkoutPage> {
     );
   }
 
-  /// Displays the weekly bar chart.
+  Widget _buildFavoriteWorkoutsTile() {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => FavoriteWorkoutsPage()),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.amber[100],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          "Favorite Workouts",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
   Widget _buildWeeklyChart() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

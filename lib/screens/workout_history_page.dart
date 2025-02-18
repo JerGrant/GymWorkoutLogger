@@ -44,16 +44,28 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
   }
 
   Stream<QuerySnapshot> getWorkouts() {
-    Query query = _firestore.collection('workouts').where('userId', isEqualTo: user?.uid);
+    Query query = _firestore
+        .collection('workouts')
+        .where('userId', isEqualTo: user?.uid);
 
+    // If user has selected a date range, apply it.
     if (startDate != null && endDate != null) {
       query = query
           .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate!))
           .where('timestamp', isLessThanOrEqualTo: Timestamp.fromDate(endDate!));
     }
 
-    query = query.orderBy('timestamp', descending: sortOption == "Newest to Oldest");
+    // Handle sort options.
+    if (sortOption == "Alphabetical Order") {
+      query = query.orderBy('name');
+    } else if (sortOption == "Oldest to Newest") {
+      query = query.orderBy('timestamp', descending: false);
+    } else {
+      // Default to "Newest to Oldest"
+      query = query.orderBy('timestamp', descending: true);
+    }
 
+    // If there's a search query, filter by name (case-insensitive).
     if (searchQuery.isNotEmpty) {
       query = query
           .where('name', isGreaterThanOrEqualTo: _capitalize(searchQuery))
@@ -101,7 +113,8 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
             Padding(
               padding: const EdgeInsets.all(10.0),
               child: Text(
-                "Showing Workouts: ${DateFormat.yMMMd().format(startDate!)} - ${DateFormat.yMMMd().format(endDate!)}",
+                "Showing Workouts: "
+                    "${DateFormat.yMMMd().format(startDate!)} - ${DateFormat.yMMMd().format(endDate!)}",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
@@ -168,6 +181,9 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
                     final workout = doc.data() as Map<String, dynamic>;
                     final workoutId = doc.id; // Firestore document ID
 
+                    // Read the 'favorited' field
+                    final isFavorited = workout['favorited'] == true;
+
                     return Card(
                       margin: EdgeInsets.all(8.0),
                       shape: RoundedRectangleBorder(
@@ -183,7 +199,18 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
                             (workout['timestamp'] as Timestamp).toDate(),
                           ),
                         ),
-                        trailing: Icon(Icons.fitness_center),
+                        // We keep the fitness_center icon + star icon
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.fitness_center),
+                            SizedBox(width: 8),
+                            Icon(
+                              isFavorited ? Icons.star : Icons.star_border,
+                              color: isFavorited ? Colors.amber : Colors.grey,
+                            ),
+                          ],
+                        ),
                         onTap: () {
                           Navigator.push(
                             context,

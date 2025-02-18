@@ -20,17 +20,52 @@ class WorkoutHistoryDetailPage extends StatefulWidget {
 class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
   final TextEditingController _commentController = TextEditingController();
 
+  // Local boolean to track if this workout is favorited
+  bool isFavorited = false;
+
   @override
   void initState() {
     super.initState();
     // Pre-fill the comment text if it already exists in Firestore.
     _commentController.text = widget.workout['comments'] ?? '';
+    // Load 'favorited' status from the workout map
+    isFavorited = widget.workout['favorited'] == true;
   }
 
   @override
   void dispose() {
     _commentController.dispose();
     super.dispose();
+  }
+
+  /// Toggle the favorite status in Firestore
+  Future<void> _toggleFavorite() async {
+    setState(() {
+      isFavorited = !isFavorited;
+    });
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('workouts')
+          .doc(widget.workoutId)
+          .update({'favorited': isFavorited});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isFavorited ? 'Added to favorites!' : 'Removed from favorites!',
+          ),
+        ),
+      );
+    } catch (e) {
+      // If Firestore update fails, revert the local state
+      setState(() {
+        isFavorited = !isFavorited;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update favorite: $e')),
+      );
+    }
   }
 
   /// Calculate total volume across all strength exercises (only those where 'sets' is a List).
@@ -157,23 +192,32 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
 
     final exercises = widget.workout['exercises'] ?? [];
     final totalVolume = _calculateTotalVolume();
-    // Retrieve the workout-level description.
     final workoutDescription = widget.workout['description'] ?? '';
 
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.workout['name'] ?? 'Workout Details'),
+        actions: [
+          // Star icon in the AppBar to toggle favorite
+          IconButton(
+            icon: Icon(
+              isFavorited ? Icons.star : Icons.star_border,
+              color: isFavorited ? Colors.amber : Colors.grey,
+            ),
+            onPressed: _toggleFavorite,
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // Workout date.
+          // Workout date
           Text(
             "Date: ${DateFormat.yMMMd().format(workoutDate)}",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 8),
-          // Workout-level description.
+          // Optional description
           if (workoutDescription.isNotEmpty) ...[
             Text(
               "Description:",
@@ -183,13 +227,13 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
             Text(workoutDescription),
             SizedBox(height: 16),
           ],
-          // Total volume with "lbs".
+          // Total volume
           Text(
             "Total Volume Lifted: $totalVolume lbs",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           SizedBox(height: 16),
-          // Exercises.
+          // Exercises
           Text(
             "Exercises:",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -206,20 +250,18 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Exercise name.
+                    // Exercise name
                     Text(
                       exerciseName,
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                     SizedBox(height: 4),
-                    // If sets is a Map, assume it's a cardio exercise.
+                    // If sets is a Map, assume cardio
                     if (setsField is Map<String, dynamic>)
                       _buildCardioFields(exercise),
-                    // If sets is a List, assume it's a strength exercise.
-                    if (setsField is List)
-                      ..._buildStrengthSets(setsField),
-                    // Fallback.
+                    // If sets is a List, assume strength
+                    if (setsField is List) ..._buildStrengthSets(setsField),
+                    // If no sets data
                     if (setsField == null)
                       Text("No data logged for this exercise"),
                   ],
@@ -228,7 +270,7 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
             );
           }).toList(),
           SizedBox(height: 24),
-          // Comments section.
+          // Comments section
           Text(
             "Comments:",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
