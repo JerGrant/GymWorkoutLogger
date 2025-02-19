@@ -123,6 +123,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               for (var exercise in selected) {
                 // Convert the exercise fields.
                 Map<String, dynamic> fixedExercise = convertExerciseFields(exercise);
+                // Ensure we include the exercise id for fetching history later.
+                fixedExercise['id'] = exercise['id'];
                 _selectedExercises.add(fixedExercise);
               }
             });
@@ -221,6 +223,184 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     return "${minutes}m ${remainingSeconds}s";
   }
 
+  /// (Updated) Fetch ALL occurrences for the exercise, find best entry, and then last 10.
+  Future<Map<String, dynamic>> _fetchExerciseHistory(String exerciseId) async {
+    List<Map<String, dynamic>> allEntries = [];
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return {'bestEntry': null, 'recent': []};
+
+    final workoutsSnapshot = await _firestore
+        .collection('workouts')
+        .where('userId', isEqualTo: currentUser.uid)
+        .orderBy('timestamp', descending: true)
+        .get();
+
+    double maxVolume = 0.0;
+    Map<String, dynamic>? bestEntry;
+
+    for (var doc in workoutsSnapshot.docs) {
+      Timestamp? ts = doc['timestamp'];
+      DateTime workoutDate = ts != null ? ts.toDate() : DateTime.now();
+      List exercises = doc['exercises'] ?? [];
+
+      for (var ex in exercises) {
+        if (ex['id'] == exerciseId) {
+          double volume = 0.0;
+          List sets = ex['sets'] ?? [];
+          for (var set in sets) {
+            if (set.containsKey('weight') && set.containsKey('reps')) {
+              double weight = 0.0;
+              int reps = 0;
+              if (set['weight'] is int) {
+                weight = (set['weight'] as int).toDouble();
+              } else if (set['weight'] is double) {
+                weight = set['weight'];
+              }
+              if (set['reps'] is int) {
+                reps = set['reps'];
+              } else {
+                reps = int.tryParse(set['reps'].toString()) ?? 0;
+              }
+              volume += weight * reps;
+            }
+          }
+          final entry = {
+            'date': workoutDate,
+            'volume': volume,
+            'sets': sets,
+          };
+          allEntries.add(entry);
+
+          // Track best volume
+          if (volume > maxVolume) {
+            maxVolume = volume;
+            bestEntry = entry;
+          }
+        }
+      }
+    }
+
+    // Sort by date descending
+    allEntries.sort((a, b) => b['date'].compareTo(a['date']));
+
+    // Remove bestEntry from the list so it's not duplicated
+    if (bestEntry != null) {
+      allEntries.remove(bestEntry);
+    }
+
+    // The "recent" list is the next 10 entries
+    final recent = allEntries.take(10).toList();
+
+    return {
+      'bestEntry': bestEntry,
+      'recent': recent,
+    };
+  }
+
+  /// Show a dialog with the personal best (if any) at the top, then last 10.
+  void _showExerciseHistoryForExercise(Map<String, dynamic> exercise) async {
+    final exerciseId = exercise['id'];
+    if (exerciseId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Exercise ID not available.")),
+      );
+      return;
+    }
+
+    final data = await _fetchExerciseHistory(exerciseId);
+    final bestEntry = data['bestEntry'] as Map<String, dynamic>?;
+    final recent = data['recent'] as List<Map<String, dynamic>>;
+
+    if (bestEntry == null && recent.isEmpty) {
+      // No data at all
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("Exercise History for ${exercise['name']}"),
+          content: Text("No history found for this exercise."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Close"),
+            )
+          ],
+        ),
+      );
+      return;
+    }
+
+    // Build the dialog content
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Exercise History for ${exercise['name']}"),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Personal Best
+                if (bestEntry != null) ...[
+                  Text("Personal Best",
+                      style:
+                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  _buildHistoryCard(bestEntry, showTrophy: true),
+                  SizedBox(height: 20),
+                ],
+                // Recent
+                Text("Recent History",
+                    style:
+                    TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                if (recent.isEmpty)
+                  Text("No recent entries.")
+                else
+                  for (var entry in recent)
+                    _buildHistoryCard(entry, showTrophy: false),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Close"),
+            )
+          ],
+        );
+      },
+    );
+  }
+
+  /// Builds a small card-like widget for an entry, showing date, volume, and sets.
+  Widget _buildHistoryCard(Map<String, dynamic> entry, {bool showTrophy = false}) {
+    DateTime date = entry['date'];
+    double volume = entry['volume'] ?? 0.0;
+    List sets = entry['sets'] ?? [];
+
+    // Build sets text
+    String setDetails = sets.asMap().entries.map((e) {
+      int setNum = e.key + 1;
+      var set = e.value;
+      var weight = set.containsKey('weight') ? set['weight'] : '-';
+      var reps = set.containsKey('reps') ? set['reps'] : '-';
+      return "Set $setNum: ${weight}lbs x ${reps} reps";
+    }).join("\n");
+
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 6),
+      child: ListTile(
+        leading: showTrophy ? Icon(Icons.emoji_events, color: Colors.amber) : null,
+        title: Text("${date.toLocal().toString().split('.')[0]}"),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Volume: ${volume.toStringAsFixed(1)}"),
+            Text(setDetails),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -271,129 +451,158 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 itemCount: _selectedExercises.length,
                 itemBuilder: (context, exerciseIndex) {
                   var exercise = _selectedExercises[exerciseIndex];
-
                   if (exercise['sets'] == null) {
                     exercise['sets'] = [];
                   }
 
-                  return Card(
-                    margin: EdgeInsets.symmetric(vertical: 8),
-                    child: Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    exercise['name'] ?? 'Unnamed Exercise',
-                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                  ),
-                                  Text(
-                                    "${exercise['category'] ?? 'Unknown Category'} | ${exercise['bodyPart'] ?? 'Unknown Body Part'}${exercise['subcategory'] != null ? ' (${exercise['subcategory']})' : ''}",
-                                    style: TextStyle(color: Colors.grey),
-                                  ),
-                                ],
-                              ),
-                              Row(
-                                children: [
-                                  IconButton(
-                                    icon: Icon(Icons.add, color: Colors.green),
-                                    onPressed: () => _addSet(exerciseIndex),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.delete, color: Colors.red),
-                                    onPressed: () => _removeExercise(exerciseIndex),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          Column(
-                            children: List.generate(exercise['sets'].length, (setIndex) {
-                              var set = exercise['sets'][setIndex];
-                              return Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text("Set ${setIndex + 1}"),
-                                  Expanded(
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  return InkWell(
+                    onTap: () => _showExerciseHistoryForExercise(exercise),
+                    child: Card(
+                      margin: EdgeInsets.symmetric(vertical: 8),
+                      child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Exercise header
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      exercise['name'] ?? 'Unnamed Exercise',
+                                      style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      "${exercise['category'] ?? 'Unknown Category'} | ${exercise['bodyPart'] ?? 'Unknown Body Part'}${exercise['subcategory'] != null ? ' (${exercise['subcategory']})' : ''}",
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(Icons.add, color: Colors.green),
+                                      onPressed: () => _addSet(exerciseIndex),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.delete, color: Colors.red),
+                                      onPressed: () => _removeExercise(exerciseIndex),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            // Sets
+                            Column(
+                              children: List.generate(exercise['sets'].length, (setIndex) {
+                                var set = exercise['sets'][setIndex];
+                                return Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text("Set ${setIndex + 1}"),
+                                    Expanded(
+                                      child: Row(
+                                        mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                        children: [
+                                          if (set.containsKey('reps'))
+                                            Container(
+                                              width: 50,
+                                              child: TextField(
+                                                decoration:
+                                                InputDecoration(labelText: "Reps"),
+                                                keyboardType: TextInputType.number,
+                                                onChanged: (value) {
+                                                  _updateReps(
+                                                      exerciseIndex,
+                                                      setIndex,
+                                                      int.tryParse(value) ?? 0);
+                                                },
+                                              ),
+                                            ),
+                                          if (set.containsKey('weight'))
+                                            Container(
+                                              width: 70,
+                                              child: TextField(
+                                                decoration: InputDecoration(
+                                                    labelText: "Weight (lbs)"),
+                                                keyboardType:
+                                                TextInputType.numberWithOptions(
+                                                    decimal: true),
+                                                onChanged: (value) {
+                                                  _updateWeight(
+                                                      exerciseIndex,
+                                                      setIndex,
+                                                      double.tryParse(value) ?? 0.0);
+                                                },
+                                              ),
+                                            ),
+                                          if (set.containsKey('duration'))
+                                            Container(
+                                              width: 70,
+                                              child: TextField(
+                                                decoration: InputDecoration(
+                                                    labelText: "Duration (sec)"),
+                                                keyboardType: TextInputType.number,
+                                                onChanged: (value) {
+                                                  _updateDuration(
+                                                      exerciseIndex,
+                                                      setIndex,
+                                                      int.tryParse(value) ?? 0);
+                                                },
+                                              ),
+                                            ),
+                                          if (set.containsKey('miles'))
+                                            Container(
+                                              width: 70,
+                                              child: TextField(
+                                                decoration:
+                                                InputDecoration(labelText: "Miles"),
+                                                keyboardType:
+                                                TextInputType.numberWithOptions(
+                                                    decimal: true),
+                                                onChanged: (value) {
+                                                  _updateMiles(
+                                                      exerciseIndex,
+                                                      setIndex,
+                                                      double.tryParse(value) ?? 0.0);
+                                                },
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    Row(
                                       children: [
-                                        if (set.containsKey('reps'))
-                                          Container(
-                                            width: 50,
-                                            child: TextField(
-                                              decoration: InputDecoration(labelText: "Reps"),
-                                              keyboardType: TextInputType.number,
-                                              onChanged: (value) {
-                                                _updateReps(exerciseIndex, setIndex, int.tryParse(value) ?? 0);
-                                              },
-                                            ),
-                                          ),
-                                        if (set.containsKey('weight'))
-                                          Container(
-                                            width: 70,
-                                            child: TextField(
-                                              decoration: InputDecoration(labelText: "Weight (lbs)"),
-                                              keyboardType: TextInputType.numberWithOptions(decimal: true),
-                                              onChanged: (value) {
-                                                _updateWeight(exerciseIndex, setIndex, double.tryParse(value) ?? 0.0);
-                                              },
-                                            ),
-                                          ),
-                                        if (set.containsKey('duration'))
-                                          Container(
-                                            width: 70,
-                                            child: TextField(
-                                              decoration: InputDecoration(labelText: "Duration (sec)"),
-                                              keyboardType: TextInputType.number,
-                                              onChanged: (value) {
-                                                _updateDuration(exerciseIndex, setIndex, int.tryParse(value) ?? 0);
-                                              },
-                                            ),
-                                          ),
-                                        if (set.containsKey('miles'))
-                                          Container(
-                                            width: 70,
-                                            child: TextField(
-                                              decoration: InputDecoration(labelText: "Miles"),
-                                              keyboardType: TextInputType.numberWithOptions(decimal: true),
-                                              onChanged: (value) {
-                                                _updateMiles(exerciseIndex, setIndex, double.tryParse(value) ?? 0.0);
-                                              },
-                                            ),
-                                          ),
+                                        IconButton(
+                                          icon: Icon(Icons.add, color: Colors.green),
+                                          onPressed: () => _addSet(exerciseIndex),
+                                        ),
+                                        IconButton(
+                                          icon: Icon(Icons.remove, color: Colors.red),
+                                          onPressed: () =>
+                                              _removeSet(exerciseIndex, setIndex),
+                                        ),
                                       ],
                                     ),
-                                  ),
-                                  Row(
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(Icons.add, color: Colors.green),
-                                        onPressed: () => _addSet(exerciseIndex),
-                                      ),
-                                      IconButton(
-                                        icon: Icon(Icons.remove, color: Colors.red),
-                                        onPressed: () => _removeSet(exerciseIndex, setIndex),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              );
-                            }),
-                          ),
-                        ],
+                                  ],
+                                );
+                              }),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );
                 },
               ),
             ),
+            // Finish/Cancel buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
