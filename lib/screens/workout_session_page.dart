@@ -36,6 +36,43 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       _selectedExercises = widget.preloadedWorkout!['exercises'] != null
           ? List<Map<String, dynamic>>.from(widget.preloadedWorkout!['exercises'])
           : [];
+      // For any preloaded exercise, initialize controllers and focusNodes for each set.
+      for (var exercise in _selectedExercises) {
+        exercise['controllers'] ??= [];
+        exercise['focusNodes'] ??= [];
+        for (var i = 0; i < (exercise['sets']?.length ?? 0); i++) {
+          Map<String, TextEditingController> ctrl = {};
+          Map<String, FocusNode> nodes = {};
+          if (exercise['sets'][i].containsKey('reps')) {
+            ctrl['reps'] =
+                TextEditingController(text: exercise['sets'][i]['reps'].toString());
+            nodes['reps'] = FocusNode();
+            nodes['reps']!.addListener(() {
+              if (!nodes['reps']!.hasFocus) {
+                _verifyAndUpdateReps(
+                    _selectedExercises.indexOf(exercise),
+                    i,
+                    ctrl['reps']!.text);
+              }
+            });
+          }
+          if (exercise['sets'][i].containsKey('weight')) {
+            ctrl['weight'] =
+                TextEditingController(text: exercise['sets'][i]['weight'].toString());
+            nodes['weight'] = FocusNode();
+            nodes['weight']!.addListener(() {
+              if (!nodes['weight']!.hasFocus) {
+                _verifyAndUpdateWeight(
+                    _selectedExercises.indexOf(exercise),
+                    i,
+                    ctrl['weight']!.text);
+              }
+            });
+          }
+          exercise['controllers'].add(ctrl);
+          exercise['focusNodes'].add(nodes);
+        }
+      }
     }
     _startWorkout();
   }
@@ -62,7 +99,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         setState(() {
           _duration++;
         });
-        print("Timer running: $_duration seconds");
       } else {
         _timer?.cancel();
       }
@@ -71,14 +107,12 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
   Future<void> _finishWorkout() async {
     _timer?.cancel();
-
     await _workoutRef?.update({
       'duration': _duration ~/ 60,
       'name': _workoutName,
       'description': _workoutDescription,
       'exercises': _selectedExercises,
     });
-
     Navigator.pop(context);
   }
 
@@ -88,9 +122,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     Navigator.pop(context);
   }
 
-  /// Helper function that converts specified fields to String if needed.
+  /// Helper function to ensure string fields are set.
   Map<String, dynamic> convertExerciseFields(Map<String, dynamic> exercise) {
-    // Fields expected to be Strings.
     List<String> fields = ['name', 'category', 'bodyPart', 'subcategory'];
     Map<String, dynamic> newExercise = Map.from(exercise);
     for (var field in fields) {
@@ -105,7 +138,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         newExercise[field] = '';
       }
     }
-    // Ensure 'sets' is a list.
     if (!(newExercise['sets'] is List)) {
       newExercise['sets'] = [];
     }
@@ -121,10 +153,10 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           onExercisesSelected: (selected) {
             setState(() {
               for (var exercise in selected) {
-                // Convert the exercise fields.
                 Map<String, dynamic> fixedExercise = convertExerciseFields(exercise);
-                // Ensure we include the exercise id for fetching history later.
                 fixedExercise['id'] = exercise['id'];
+                fixedExercise['controllers'] = <Map<String, TextEditingController>>[];
+                fixedExercise['focusNodes'] = <Map<String, FocusNode>>[];
                 _selectedExercises.add(fixedExercise);
               }
             });
@@ -136,11 +168,17 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
   void _removeExercise(int index) {
     setState(() {
+      for (var map in _selectedExercises[index]['controllers']) {
+        map.values.forEach((c) => c.dispose());
+      }
+      for (var map in _selectedExercises[index]['focusNodes']) {
+        map.values.forEach((node) => node.dispose());
+      }
       _selectedExercises.removeAt(index);
     });
   }
 
-  /// Helper to determine default set fields based on category.
+  /// Returns default set values based on category.
   Map<String, dynamic> _getDefaultSet(String category) {
     final lower = category.toLowerCase();
     if (lower.contains("cardio")) {
@@ -167,12 +205,44 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     final category = exercise['category']?.toString() ?? "";
     final newSet = _getDefaultSet(category);
 
+    // Create controllers and focus nodes for fields that require verification.
+    Map<String, TextEditingController> newControllers = {};
+    Map<String, FocusNode> newFocusNodes = {};
+
+    if (newSet.containsKey('reps')) {
+      newControllers['reps'] = TextEditingController(text: newSet['reps'].toString());
+      newFocusNodes['reps'] = FocusNode();
+      newFocusNodes['reps']!.addListener(() {
+        if (!newFocusNodes['reps']!.hasFocus) {
+          _verifyAndUpdateReps(
+              exerciseIndex,
+              exercise['sets'].length, // index of new set being added
+              newControllers['reps']!.text);
+        }
+      });
+    }
+    if (newSet.containsKey('weight')) {
+      newControllers['weight'] =
+          TextEditingController(text: newSet['weight'].toString());
+      newFocusNodes['weight'] = FocusNode();
+      newFocusNodes['weight']!.addListener(() {
+        if (!newFocusNodes['weight']!.hasFocus) {
+          _verifyAndUpdateWeight(
+              exerciseIndex,
+              exercise['sets'].length,
+              newControllers['weight']!.text);
+        }
+      });
+    }
+
     setState(() {
-      if (exercise['sets'] == null) {
-        exercise['sets'] = [];
-      }
       exercise['sets'].add(newSet);
+      exercise['controllers'] ??= <Map<String, TextEditingController>>[];
+      exercise['focusNodes'] ??= <Map<String, FocusNode>>[];
+      exercise['controllers'].add(newControllers);
+      exercise['focusNodes'].add(newFocusNodes);
     });
+
     Future.delayed(Duration(milliseconds: 200), () {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
@@ -184,7 +254,15 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
   void _removeSet(int exerciseIndex, int setIndex) {
     setState(() {
+      Map<String, TextEditingController> ctrls =
+      _selectedExercises[exerciseIndex]['controllers'][setIndex];
+      ctrls.values.forEach((c) => c.dispose());
+      Map<String, FocusNode> nodes =
+      _selectedExercises[exerciseIndex]['focusNodes'][setIndex];
+      nodes.values.forEach((n) => n.dispose());
       _selectedExercises[exerciseIndex]['sets'].removeAt(setIndex);
+      _selectedExercises[exerciseIndex]['controllers'].removeAt(setIndex);
+      _selectedExercises[exerciseIndex]['focusNodes'].removeAt(setIndex);
     });
   }
 
@@ -216,14 +294,12 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     final hours = seconds ~/ 3600;
     final minutes = (seconds % 3600) ~/ 60;
     final remainingSeconds = seconds % 60;
-
     if (hours > 0) {
       return "${hours}h ${minutes}m ${remainingSeconds}s";
     }
     return "${minutes}m ${remainingSeconds}s";
   }
 
-  /// (Updated) Fetch ALL occurrences for the exercise, find best entry, and then last 10.
   Future<Map<String, dynamic>> _fetchExerciseHistory(String exerciseId) async {
     List<Map<String, dynamic>> allEntries = [];
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -242,7 +318,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       Timestamp? ts = doc['timestamp'];
       DateTime workoutDate = ts != null ? ts.toDate() : DateTime.now();
       List exercises = doc['exercises'] ?? [];
-
       for (var ex in exercises) {
         if (ex['id'] == exerciseId) {
           double volume = 0.0;
@@ -270,8 +345,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
             'sets': sets,
           };
           allEntries.add(entry);
-
-          // Track best volume
           if (volume > maxVolume) {
             maxVolume = volume;
             bestEntry = entry;
@@ -280,15 +353,10 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       }
     }
 
-    // Sort by date descending
     allEntries.sort((a, b) => b['date'].compareTo(a['date']));
-
-    // Remove bestEntry from the list so it's not duplicated
     if (bestEntry != null) {
       allEntries.remove(bestEntry);
     }
-
-    // The "recent" list is the next 10 entries
     final recent = allEntries.take(10).toList();
 
     return {
@@ -297,7 +365,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     };
   }
 
-  /// Show a dialog with the personal best (if any) at the top, then last 10.
   void _showExerciseHistoryForExercise(Map<String, dynamic> exercise) async {
     final exerciseId = exercise['id'];
     if (exerciseId == null) {
@@ -312,7 +379,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     final recent = data['recent'] as List<Map<String, dynamic>>;
 
     if (bestEntry == null && recent.isEmpty) {
-      // No data at all
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -329,7 +395,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       return;
     }
 
-    // Build the dialog content
     showDialog(
       context: context,
       builder: (context) {
@@ -339,23 +404,18 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Personal Best
                 if (bestEntry != null) ...[
                   Text("Personal Best",
-                      style:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   _buildHistoryCard(bestEntry, showTrophy: true),
                   SizedBox(height: 20),
                 ],
-                // Recent
                 Text("Recent History",
-                    style:
-                    TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 if (recent.isEmpty)
                   Text("No recent entries.")
                 else
-                  for (var entry in recent)
-                    _buildHistoryCard(entry, showTrophy: false),
+                  for (var entry in recent) _buildHistoryCard(entry, showTrophy: false),
               ],
             ),
           ),
@@ -370,13 +430,10 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     );
   }
 
-  /// Builds a small card-like widget for an entry, showing date, volume, and sets.
   Widget _buildHistoryCard(Map<String, dynamic> entry, {bool showTrophy = false}) {
     DateTime date = entry['date'];
     double volume = entry['volume'] ?? 0.0;
     List sets = entry['sets'] ?? [];
-
-    // Build sets text
     String setDetails = sets.asMap().entries.map((e) {
       int setNum = e.key + 1;
       var set = e.value;
@@ -399,6 +456,57 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         ),
       ),
     );
+  }
+
+  Future<bool> _showVerificationDialog(String message) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Confirm Value"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text("No"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text("Yes"),
+          ),
+        ],
+      ),
+    ) ??
+        false;
+  }
+
+  Future<void> _verifyAndUpdateReps(
+      int exerciseIndex, int setIndex, String valueStr) async {
+    int reps = int.tryParse(valueStr) ?? 0;
+    if (reps > 100) {
+      bool confirmed = await _showVerificationDialog("You entered over 100 reps. Are you sure?");
+      if (!confirmed) {
+        setState(() {
+          _selectedExercises[exerciseIndex]['sets'][setIndex]['reps'] = 0;
+        });
+        return;
+      }
+    }
+    _updateReps(exerciseIndex, setIndex, reps);
+  }
+
+  Future<void> _verifyAndUpdateWeight(
+      int exerciseIndex, int setIndex, String valueStr) async {
+    double weight = double.tryParse(valueStr) ?? 0.0;
+    if (weight > 500) {
+      bool confirmed = await _showVerificationDialog("You entered over 500 lbs. Are you sure?");
+      if (!confirmed) {
+        setState(() {
+          _selectedExercises[exerciseIndex]['sets'][setIndex]['weight'] = 0.0;
+        });
+        return;
+      }
+    }
+    _updateWeight(exerciseIndex, setIndex, weight);
   }
 
   @override
@@ -451,24 +559,22 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 itemCount: _selectedExercises.length,
                 itemBuilder: (context, exerciseIndex) {
                   var exercise = _selectedExercises[exerciseIndex];
-                  if (exercise['sets'] == null) {
-                    exercise['sets'] = [];
-                  }
-
-                  return InkWell(
-                    onTap: () => _showExerciseHistoryForExercise(exercise),
-                    child: Card(
-                      margin: EdgeInsets.symmetric(vertical: 8),
-                      child: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Exercise header
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Column(
+                  exercise['sets'] ??= [];
+                  exercise['controllers'] ??= [];
+                  exercise['focusNodes'] ??= [];
+                  return Card(
+                    margin: EdgeInsets.symmetric(vertical: 8),
+                    child: Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Exercise header with info icon.
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
@@ -483,126 +589,120 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                     ),
                                   ],
                                 ),
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(Icons.add, color: Colors.green),
-                                      onPressed: () => _addSet(exerciseIndex),
-                                    ),
-                                    IconButton(
-                                      icon: Icon(Icons.delete, color: Colors.red),
-                                      onPressed: () => _removeExercise(exerciseIndex),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            // Sets
-                            Column(
-                              children: List.generate(exercise['sets'].length, (setIndex) {
-                                var set = exercise['sets'][setIndex];
-                                return Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text("Set ${setIndex + 1}"),
-                                    Expanded(
-                                      child: Row(
-                                        mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                        children: [
-                                          if (set.containsKey('reps'))
-                                            Container(
-                                              width: 50,
-                                              child: TextField(
-                                                decoration:
-                                                InputDecoration(labelText: "Reps"),
-                                                keyboardType: TextInputType.number,
-                                                onChanged: (value) {
-                                                  _updateReps(
-                                                      exerciseIndex,
-                                                      setIndex,
-                                                      int.tryParse(value) ?? 0);
-                                                },
-                                              ),
-                                            ),
-                                          if (set.containsKey('weight'))
-                                            Container(
-                                              width: 70,
-                                              child: TextField(
-                                                decoration: InputDecoration(
-                                                    labelText: "Weight (lbs)"),
-                                                keyboardType:
-                                                TextInputType.numberWithOptions(
-                                                    decimal: true),
-                                                onChanged: (value) {
-                                                  _updateWeight(
-                                                      exerciseIndex,
-                                                      setIndex,
-                                                      double.tryParse(value) ?? 0.0);
-                                                },
-                                              ),
-                                            ),
-                                          if (set.containsKey('duration'))
-                                            Container(
-                                              width: 70,
-                                              child: TextField(
-                                                decoration: InputDecoration(
-                                                    labelText: "Duration (sec)"),
-                                                keyboardType: TextInputType.number,
-                                                onChanged: (value) {
-                                                  _updateDuration(
-                                                      exerciseIndex,
-                                                      setIndex,
-                                                      int.tryParse(value) ?? 0);
-                                                },
-                                              ),
-                                            ),
-                                          if (set.containsKey('miles'))
-                                            Container(
-                                              width: 70,
-                                              child: TextField(
-                                                decoration:
-                                                InputDecoration(labelText: "Miles"),
-                                                keyboardType:
-                                                TextInputType.numberWithOptions(
-                                                    decimal: true),
-                                                onChanged: (value) {
-                                                  _updateMiles(
-                                                      exerciseIndex,
-                                                      setIndex,
-                                                      double.tryParse(value) ?? 0.0);
-                                                },
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                    Row(
+                              ),
+                              // Info icon to show exercise history.
+                              IconButton(
+                                icon: Icon(Icons.info_outline, color: Colors.blue),
+                                onPressed: () {
+                                  _showExerciseHistoryForExercise(exercise);
+                                },
+                              ),
+                              // Action icons.
+                              IconButton(
+                                icon: Icon(Icons.add, color: Colors.green),
+                                onPressed: () => _addSet(exerciseIndex),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => _removeExercise(exerciseIndex),
+                              ),
+                            ],
+                          ),
+                          // List of sets.
+                          Column(
+                            children: List.generate(exercise['sets'].length, (setIndex) {
+                              var set = exercise['sets'][setIndex];
+                              Map<String, TextEditingController> controllers =
+                              exercise['controllers'][setIndex];
+                              Map<String, FocusNode> focusNodes =
+                              exercise['focusNodes'][setIndex];
+                              return Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text("Set ${setIndex + 1}"),
+                                  Expanded(
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                       children: [
-                                        IconButton(
-                                          icon: Icon(Icons.add, color: Colors.green),
-                                          onPressed: () => _addSet(exerciseIndex),
-                                        ),
-                                        IconButton(
-                                          icon: Icon(Icons.remove, color: Colors.red),
-                                          onPressed: () =>
-                                              _removeSet(exerciseIndex, setIndex),
-                                        ),
+                                        if (set.containsKey('reps'))
+                                          Container(
+                                            width: 50,
+                                            child: TextField(
+                                              decoration: InputDecoration(labelText: "Reps"),
+                                              keyboardType: TextInputType.number,
+                                              controller: controllers['reps'],
+                                              focusNode: focusNodes['reps'],
+                                              onSubmitted: (value) {
+                                                _verifyAndUpdateReps(
+                                                    exerciseIndex, setIndex, value);
+                                              },
+                                            ),
+                                          ),
+                                        if (set.containsKey('weight'))
+                                          Container(
+                                            width: 70,
+                                            child: TextField(
+                                              decoration: InputDecoration(labelText: "Weight (lbs)"),
+                                              keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                              controller: controllers['weight'],
+                                              focusNode: focusNodes['weight'],
+                                              onSubmitted: (value) {
+                                                _verifyAndUpdateWeight(
+                                                    exerciseIndex, setIndex, value);
+                                              },
+                                            ),
+                                          ),
+                                        if (set.containsKey('duration'))
+                                          Container(
+                                            width: 70,
+                                            child: TextField(
+                                              decoration: InputDecoration(labelText: "Duration (sec)"),
+                                              keyboardType: TextInputType.number,
+                                              onChanged: (value) {
+                                                _updateDuration(
+                                                    exerciseIndex, setIndex, int.tryParse(value) ?? 0);
+                                              },
+                                            ),
+                                          ),
+                                        if (set.containsKey('miles'))
+                                          Container(
+                                            width: 70,
+                                            child: TextField(
+                                              decoration: InputDecoration(labelText: "Miles"),
+                                              keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                              onChanged: (value) {
+                                                _updateMiles(
+                                                    exerciseIndex, setIndex, double.tryParse(value) ?? 0.0);
+                                              },
+                                            ),
+                                          ),
                                       ],
                                     ),
-                                  ],
-                                );
-                              }),
-                            ),
-                          ],
-                        ),
+                                  ),
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(Icons.add, color: Colors.green),
+                                        onPressed: () => _addSet(exerciseIndex),
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.remove, color: Colors.red),
+                                        onPressed: () => _removeSet(exerciseIndex, setIndex),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              );
+                            }),
+                          ),
+                        ],
                       ),
                     ),
                   );
                 },
               ),
             ),
-            // Finish/Cancel buttons
+            // Finish/Cancel buttons.
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -626,6 +726,18 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   @override
   void dispose() {
     _timer?.cancel();
+    for (var exercise in _selectedExercises) {
+      if (exercise['controllers'] != null) {
+        for (var ctrlMap in exercise['controllers']) {
+          ctrlMap.values.forEach((c) => c.dispose());
+        }
+      }
+      if (exercise['focusNodes'] != null) {
+        for (var nodeMap in exercise['focusNodes']) {
+          nodeMap.values.forEach((node) => node.dispose());
+        }
+      }
+    }
     super.dispose();
   }
 }
