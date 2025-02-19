@@ -6,7 +6,6 @@ import 'dart:async';
 import 'package:gymworkoutlogger/screens/exercise_selection_modal.dart';
 
 class WorkoutSessionPage extends StatefulWidget {
-  // Optional parameter to preload workout data from a favorited workout.
   final Map<String, dynamic>? preloadedWorkout;
 
   const WorkoutSessionPage({Key? key, this.preloadedWorkout}) : super(key: key);
@@ -27,6 +26,9 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   List<Map<String, dynamic>> _selectedExercises = [];
   final ScrollController _scrollController = ScrollController();
 
+  final TextEditingController _workoutNameController = TextEditingController();
+  final TextEditingController _workoutDescriptionController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -36,7 +38,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       _selectedExercises = widget.preloadedWorkout!['exercises'] != null
           ? List<Map<String, dynamic>>.from(widget.preloadedWorkout!['exercises'])
           : [];
-      // For any preloaded exercise, initialize controllers and focusNodes for each set.
       for (var exercise in _selectedExercises) {
         exercise['controllers'] ??= [];
         exercise['focusNodes'] ??= [];
@@ -44,28 +45,34 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           Map<String, TextEditingController> ctrl = {};
           Map<String, FocusNode> nodes = {};
           if (exercise['sets'][i].containsKey('reps')) {
-            ctrl['reps'] =
-                TextEditingController(text: exercise['sets'][i]['reps'].toString());
+            final repsVal = exercise['sets'][i]['reps'];
+            ctrl['reps'] = TextEditingController(
+              text: (repsVal == null || repsVal == 0) ? "" : repsVal.toString(),
+            );
             nodes['reps'] = FocusNode();
             nodes['reps']!.addListener(() {
               if (!nodes['reps']!.hasFocus) {
                 _verifyAndUpdateReps(
-                    _selectedExercises.indexOf(exercise),
-                    i,
-                    ctrl['reps']!.text);
+                  _selectedExercises.indexOf(exercise),
+                  i,
+                  ctrl['reps']!.text,
+                );
               }
             });
           }
           if (exercise['sets'][i].containsKey('weight')) {
-            ctrl['weight'] =
-                TextEditingController(text: exercise['sets'][i]['weight'].toString());
+            final weightVal = exercise['sets'][i]['weight'];
+            ctrl['weight'] = TextEditingController(
+              text: (weightVal == null || weightVal == 0.0) ? "" : weightVal.toString(),
+            );
             nodes['weight'] = FocusNode();
             nodes['weight']!.addListener(() {
               if (!nodes['weight']!.hasFocus) {
                 _verifyAndUpdateWeight(
-                    _selectedExercises.indexOf(exercise),
-                    i,
-                    ctrl['weight']!.text);
+                  _selectedExercises.indexOf(exercise),
+                  i,
+                  ctrl['weight']!.text,
+                );
               }
             });
           }
@@ -74,12 +81,24 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         }
       }
     }
+    _workoutNameController.text = _workoutName;
+    _workoutDescriptionController.text = _workoutDescription;
+    _workoutNameController.addListener(() {
+      setState(() {
+        _workoutName = _workoutNameController.text;
+      });
+    });
+    _workoutDescriptionController.addListener(() {
+      setState(() {
+        _workoutDescription = _workoutDescriptionController.text;
+      });
+    });
+
     _startWorkout();
   }
 
   Future<void> _startWorkout() async {
     if (user == null) return;
-
     _workoutRef = await _firestore.collection('workouts').add({
       'userId': user!.uid,
       'timestamp': FieldValue.serverTimestamp(),
@@ -88,7 +107,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       'description': _workoutDescription,
       'exercises': _selectedExercises,
     });
-
     _startTimer();
   }
 
@@ -107,11 +125,20 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
   Future<void> _finishWorkout() async {
     _timer?.cancel();
+
+    // Clean up _selectedExercises by removing non-serializable keys.
+    List<Map<String, dynamic>> cleanedExercises = _selectedExercises.map((exercise) {
+      var cleaned = Map<String, dynamic>.from(exercise);
+      cleaned.remove("controllers");
+      cleaned.remove("focusNodes");
+      return cleaned;
+    }).toList();
+
     await _workoutRef?.update({
       'duration': _duration ~/ 60,
       'name': _workoutName,
       'description': _workoutDescription,
-      'exercises': _selectedExercises,
+      'exercises': cleanedExercises,
     });
     Navigator.pop(context);
   }
@@ -122,7 +149,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     Navigator.pop(context);
   }
 
-  /// Helper function to ensure string fields are set.
   Map<String, dynamic> convertExerciseFields(Map<String, dynamic> exercise) {
     List<String> fields = ['name', 'category', 'bodyPart', 'subcategory'];
     Map<String, dynamic> newExercise = Map.from(exercise);
@@ -178,25 +204,24 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
   }
 
-  /// Returns default set values based on category.
   Map<String, dynamic> _getDefaultSet(String category) {
     final lower = category.toLowerCase();
     if (lower.contains("cardio")) {
-      return {'miles': 0.0, 'duration': 0};
+      return {'miles': null, 'duration': null};
     } else if (lower.contains("lap")) {
-      return {'reps': 0, 'duration': 0};
+      return {'reps': null, 'duration': null};
     } else if (lower.contains("isometric")) {
-      return {'reps': 0, 'weight': 0.0, 'duration': 0};
+      return {'reps': null, 'weight': null, 'duration': null};
     } else if (lower.contains("stretching") ||
         lower.contains("mobility") ||
         lower == "duration") {
-      return {'duration': 0};
+      return {'duration': null};
     } else if (lower.contains("assisted body")) {
-      return {'reps': 0, 'weight': 0.0};
+      return {'reps': null, 'weight': null};
     } else if (lower.contains("non-weight")) {
-      return {'reps': 0};
+      return {'reps': null};
     } else {
-      return {'reps': 0, 'weight': 0.0};
+      return {'reps': null, 'weight': null};
     }
   }
 
@@ -204,37 +229,35 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     final exercise = _selectedExercises[exerciseIndex];
     final category = exercise['category']?.toString() ?? "";
     final newSet = _getDefaultSet(category);
-
-    // Create controllers and focus nodes for fields that require verification.
     Map<String, TextEditingController> newControllers = {};
     Map<String, FocusNode> newFocusNodes = {};
 
     if (newSet.containsKey('reps')) {
-      newControllers['reps'] = TextEditingController(text: newSet['reps'].toString());
+      newControllers['reps'] = TextEditingController(text: "");
       newFocusNodes['reps'] = FocusNode();
       newFocusNodes['reps']!.addListener(() {
         if (!newFocusNodes['reps']!.hasFocus) {
           _verifyAndUpdateReps(
-              exerciseIndex,
-              exercise['sets'].length, // index of new set being added
-              newControllers['reps']!.text);
+            exerciseIndex,
+            exercise['sets'].length,
+            newControllers['reps']!.text,
+          );
         }
       });
     }
     if (newSet.containsKey('weight')) {
-      newControllers['weight'] =
-          TextEditingController(text: newSet['weight'].toString());
+      newControllers['weight'] = TextEditingController(text: "");
       newFocusNodes['weight'] = FocusNode();
       newFocusNodes['weight']!.addListener(() {
         if (!newFocusNodes['weight']!.hasFocus) {
           _verifyAndUpdateWeight(
-              exerciseIndex,
-              exercise['sets'].length,
-              newControllers['weight']!.text);
+            exerciseIndex,
+            exercise['sets'].length,
+            newControllers['weight']!.text,
+          );
         }
       });
     }
-
     setState(() {
       exercise['sets'].add(newSet);
       exercise['controllers'] ??= <Map<String, TextEditingController>>[];
@@ -242,7 +265,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       exercise['controllers'].add(newControllers);
       exercise['focusNodes'].add(newFocusNodes);
     });
-
     Future.delayed(Duration(milliseconds: 200), () {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
@@ -483,10 +505,12 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       int exerciseIndex, int setIndex, String valueStr) async {
     int reps = int.tryParse(valueStr) ?? 0;
     if (reps > 100) {
-      bool confirmed = await _showVerificationDialog("You entered over 100 reps. Are you sure?");
+      bool confirmed =
+      await _showVerificationDialog("You entered over 100 reps. Are you sure?");
       if (!confirmed) {
         setState(() {
-          _selectedExercises[exerciseIndex]['sets'][setIndex]['reps'] = 0;
+          _selectedExercises[exerciseIndex]['sets'][setIndex]['reps'] = null;
+          _selectedExercises[exerciseIndex]['controllers'][setIndex]['reps']?.text = "";
         });
         return;
       }
@@ -501,7 +525,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       bool confirmed = await _showVerificationDialog("You entered over 500 lbs. Are you sure?");
       if (!confirmed) {
         setState(() {
-          _selectedExercises[exerciseIndex]['sets'][setIndex]['weight'] = 0.0;
+          _selectedExercises[exerciseIndex]['sets'][setIndex]['weight'] = null;
+          _selectedExercises[exerciseIndex]['controllers'][setIndex]['weight']?.text = "";
         });
         return;
       }
@@ -532,21 +557,11 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           children: [
             TextField(
               decoration: InputDecoration(labelText: 'Workout Name'),
-              controller: TextEditingController(text: _workoutName),
-              onChanged: (value) {
-                setState(() {
-                  _workoutName = value;
-                });
-              },
+              controller: _workoutNameController,
             ),
             TextField(
               decoration: InputDecoration(labelText: 'Description'),
-              controller: TextEditingController(text: _workoutDescription),
-              onChanged: (value) {
-                setState(() {
-                  _workoutDescription = value;
-                });
-              },
+              controller: _workoutDescriptionController,
             ),
             SizedBox(height: 20),
             ElevatedButton(
@@ -569,7 +584,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Exercise header with info icon.
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -590,14 +604,12 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                   ],
                                 ),
                               ),
-                              // Info icon to show exercise history.
                               IconButton(
                                 icon: Icon(Icons.info_outline, color: Colors.blue),
                                 onPressed: () {
                                   _showExerciseHistoryForExercise(exercise);
                                 },
                               ),
-                              // Action icons.
                               IconButton(
                                 icon: Icon(Icons.add, color: Colors.green),
                                 onPressed: () => _addSet(exerciseIndex),
@@ -608,7 +620,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                               ),
                             ],
                           ),
-                          // List of sets.
                           Column(
                             children: List.generate(exercise['sets'].length, (setIndex) {
                               var set = exercise['sets'][setIndex];
@@ -633,8 +644,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                               controller: controllers['reps'],
                                               focusNode: focusNodes['reps'],
                                               onSubmitted: (value) {
-                                                _verifyAndUpdateReps(
-                                                    exerciseIndex, setIndex, value);
+                                                _verifyAndUpdateReps(exerciseIndex, setIndex, value);
                                               },
                                             ),
                                           ),
@@ -647,8 +657,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                               controller: controllers['weight'],
                                               focusNode: focusNodes['weight'],
                                               onSubmitted: (value) {
-                                                _verifyAndUpdateWeight(
-                                                    exerciseIndex, setIndex, value);
+                                                _verifyAndUpdateWeight(exerciseIndex, setIndex, value);
                                               },
                                             ),
                                           ),
@@ -659,8 +668,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                               decoration: InputDecoration(labelText: "Duration (sec)"),
                                               keyboardType: TextInputType.number,
                                               onChanged: (value) {
-                                                _updateDuration(
-                                                    exerciseIndex, setIndex, int.tryParse(value) ?? 0);
+                                                _updateDuration(exerciseIndex, setIndex, int.tryParse(value) ?? 0);
                                               },
                                             ),
                                           ),
@@ -671,8 +679,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                               decoration: InputDecoration(labelText: "Miles"),
                                               keyboardType: TextInputType.numberWithOptions(decimal: true),
                                               onChanged: (value) {
-                                                _updateMiles(
-                                                    exerciseIndex, setIndex, double.tryParse(value) ?? 0.0);
+                                                _updateMiles(exerciseIndex, setIndex, double.tryParse(value) ?? 0.0);
                                               },
                                             ),
                                           ),
@@ -702,7 +709,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 },
               ),
             ),
-            // Finish/Cancel buttons.
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -726,6 +732,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   @override
   void dispose() {
     _timer?.cancel();
+    _workoutNameController.dispose();
+    _workoutDescriptionController.dispose();
     for (var exercise in _selectedExercises) {
       if (exercise['controllers'] != null) {
         for (var ctrlMap in exercise['controllers']) {
