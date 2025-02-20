@@ -6,7 +6,7 @@ import 'workout_session_page.dart';
 
 class WorkoutHistoryDetailPage extends StatefulWidget {
   final Map<String, dynamic> workout;
-  final String workoutId; // Firestore doc ID for saving comments, etc.
+  final String workoutId;
 
   const WorkoutHistoryDetailPage({
     Key? key,
@@ -21,17 +21,39 @@ class WorkoutHistoryDetailPage extends StatefulWidget {
 
 class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
   final TextEditingController _commentController = TextEditingController();
-
-  // Local boolean to track if this workout is favorited
   bool isFavorited = false;
+
+  /// We store the duration as a friendly string, e.g. "35s", "2m 14s", "1h 5m 2s".
+  String? workoutDurationString;
 
   @override
   void initState() {
     super.initState();
-    // Pre-fill the comment text if it already exists in Firestore.
     _commentController.text = widget.workout['comments'] ?? '';
-    // Load 'favorited' status from the workout map
     isFavorited = widget.workout['favorited'] == true;
+
+    // If your Firestore doc has a field "duration" in total seconds, parse it:
+    final durationValue = widget.workout['duration'];
+    if (durationValue != null) {
+      final durationInSeconds = durationValue is int
+          ? durationValue
+          : int.tryParse(durationValue.toString()) ?? 0;
+
+      // Convert total seconds to h/m/s
+      final hours = durationInSeconds ~/ 3600;
+      final minutes = (durationInSeconds % 3600) ~/ 60;
+      final seconds = durationInSeconds % 60;
+
+      // Build the friendly string
+      final buffer = StringBuffer();
+      if (hours > 0) buffer.write('${hours}h ');
+      if (minutes > 0) buffer.write('${minutes}m ');
+      if (seconds > 0) buffer.write('${seconds}s');
+
+      // If somehow duration is 0, at least say "0s"
+      workoutDurationString =
+      buffer.isEmpty ? '0s' : buffer.toString().trim();
+    }
   }
 
   @override
@@ -40,7 +62,6 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
     super.dispose();
   }
 
-  /// Toggle the favorite status in Firestore
   Future<void> _toggleFavorite() async {
     setState(() {
       isFavorited = !isFavorited;
@@ -60,7 +81,6 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
         ),
       );
     } catch (e) {
-      // If Firestore update fails, revert the local state
       setState(() {
         isFavorited = !isFavorited;
       });
@@ -70,7 +90,6 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
     }
   }
 
-  /// Calculate total volume across all strength exercises (only those where 'sets' is a List).
   int _calculateTotalVolume() {
     int totalVolume = 0;
     final exercises = widget.workout['exercises'] ?? [];
@@ -102,7 +121,6 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
     }
   }
 
-  /// Builds UI for a cardio exercise when data is stored as a nested Map in 'sets'.
   Widget _buildCardioFields(Map<String, dynamic> exercise) {
     final setsField = exercise['sets'];
     if (setsField is Map<String, dynamic>) {
@@ -137,9 +155,6 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
     return Text("No cardio data logged");
   }
 
-  /// Builds UI for a strength exercise (where 'sets' is a List).
-  /// Additionally, if a set has fields that look like cardio data (duration, miles, reps)
-  /// and no weight, it will display that data.
   List<Widget> _buildStrengthSets(List setsList) {
     final widgets = <Widget>[];
     for (int i = 0; i < setsList.length; i++) {
@@ -162,14 +177,16 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
         if (reps != null) {
           cardioWidgets.add(Text("Reps: $reps"));
         }
-        widgets.add(Row(
-          children: cardioWidgets
-              .map((w) => Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: w,
-          ))
-              .toList(),
-        ));
+        widgets.add(
+          Row(
+            children: cardioWidgets
+                .map((w) => Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: w,
+            ))
+                .toList(),
+          ),
+        );
       } else {
         // Otherwise, treat as a strength set.
         final weight = setData['weight'];
@@ -186,7 +203,6 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Convert Firestore timestamp to DateTime.
     DateTime workoutDate = DateTime.now();
     if (widget.workout['timestamp'] is Timestamp) {
       workoutDate = (widget.workout['timestamp'] as Timestamp).toDate();
@@ -200,7 +216,6 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
       appBar: AppBar(
         title: Text(widget.workout['name'] ?? 'Workout Details'),
         actions: [
-          // Star icon in the AppBar to toggle favorite
           IconButton(
             icon: Icon(
               isFavorited ? Icons.star : Icons.star_border,
@@ -213,52 +228,59 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // Workout date
           Text(
             "Date: ${DateFormat.yMMMd().format(workoutDate)}",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 8),
-          // Optional description
+          const SizedBox(height: 8),
+
+          // Show the duration string if present
+          if (workoutDurationString != null)
+            Text(
+              "Duration: $workoutDurationString",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          const SizedBox(height: 8),
+
           if (workoutDescription.isNotEmpty) ...[
             Text(
               "Description:",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 4),
+            const SizedBox(height: 4),
             Text(workoutDescription),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
           ],
-          // Total volume
+
           Text(
             "Total Volume Lifted: $totalVolume lbs",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
-          SizedBox(height: 16),
-          // Exercises section
+          const SizedBox(height: 16),
+
           Text(
             "Exercises:",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
+
           ...exercises.map<Widget>((exercise) {
             final exerciseName = exercise['name'] ?? 'Unnamed Exercise';
             final setsField = exercise['sets'];
 
             return Card(
-              margin: EdgeInsets.symmetric(vertical: 4),
+              margin: const EdgeInsets.symmetric(vertical: 4),
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Exercise name
                     Text(
                       exerciseName,
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style:
+                      TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-                    SizedBox(height: 4),
-                    // Cardio or strength sets display
+                    const SizedBox(height: 4),
                     if (setsField is Map<String, dynamic>)
                       _buildCardioFields(exercise),
                     if (setsField is List) ..._buildStrengthSets(setsField),
@@ -269,12 +291,11 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
               ),
             );
           }).toList(),
-          // "Start this workout" button appears if this workout is favorited
+
           if (widget.workout['favorited'] == true) ...[
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                // Navigate to the workout session page with the current workout as a template.
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -287,13 +308,13 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
               child: Text('Start this workout'),
             ),
           ],
-          SizedBox(height: 24),
-          // Comments section
+
+          const SizedBox(height: 24),
           Text(
             "Comments:",
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           TextField(
             controller: _commentController,
             decoration: InputDecoration(
@@ -302,7 +323,7 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
             ),
             maxLines: null,
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           ElevatedButton(
             onPressed: _saveComment,
             child: Text('Save Comment'),
