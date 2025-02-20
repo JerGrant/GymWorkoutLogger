@@ -128,7 +128,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
   void _startTimer() {
     _timer?.cancel();
-    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
           _duration++;
@@ -171,8 +171,9 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     }).toList();
 
     // 4) Update Firestore with final data
+    //    Storing total seconds directly, so short workouts won't show up as 0.
     await _workoutRef?.update({
-      'duration': _duration ~/ 60, // or store total seconds if you prefer
+      'duration': _duration, // total seconds
       'name': _workoutName,
       'description': _workoutDescription,
       'exercises': cleanedExercises,
@@ -223,7 +224,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 Map<String, dynamic> fixedExercise =
                 convertExerciseFields(exercise);
                 fixedExercise['id'] = exercise['id'];
-                fixedExercise['controllers'] = <Map<String, TextEditingController>>[];
+                fixedExercise['controllers'] =
+                <Map<String, TextEditingController>>[];
                 fixedExercise['focusNodes'] = <Map<String, FocusNode>>[];
                 _selectedExercises.add(fixedExercise);
               }
@@ -312,10 +314,10 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
 
     // Scroll to bottom to show the newly added set
-    Future.delayed(Duration(milliseconds: 200), () {
+    Future.delayed(const Duration(milliseconds: 200), () {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
-        duration: Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
     });
@@ -442,7 +444,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     final exerciseId = exercise['id'];
     if (exerciseId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Exercise ID not available.")),
+        const SnackBar(content: Text("Exercise ID not available.")),
       );
       return;
     }
@@ -456,11 +458,11 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         context: context,
         builder: (context) => AlertDialog(
           title: Text("Exercise History for ${exercise['name']}"),
-          content: Text("No history found for this exercise."),
+          content: const Text("No history found for this exercise."),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text("Close"),
+              child: const Text("Close"),
             )
           ],
         ),
@@ -478,19 +480,19 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (bestEntry != null) ...[
-                  Text(
+                  const Text(
                     "Personal Best",
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   _buildHistoryCard(bestEntry, showTrophy: true),
-                  SizedBox(height: 20),
+                  const SizedBox(height: 20),
                 ],
-                Text(
+                const Text(
                   "Recent History",
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 if (recent.isEmpty)
-                  Text("No recent entries.")
+                  const Text("No recent entries.")
                 else
                   for (var entry in recent) _buildHistoryCard(entry),
               ],
@@ -499,7 +501,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text("Close"),
+              child: const Text("Close"),
             )
           ],
         );
@@ -520,9 +522,9 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     }).join("\n");
 
     return Card(
-      margin: EdgeInsets.symmetric(vertical: 6),
+      margin: const EdgeInsets.symmetric(vertical: 6),
       child: ListTile(
-        leading: showTrophy ? Icon(Icons.emoji_events, color: Colors.amber) : null,
+        leading: showTrophy ? const Icon(Icons.emoji_events, color: Colors.amber) : null,
         title: Text("${date.toLocal().toString().split('.')[0]}"),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -539,16 +541,16 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     return await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Confirm Value"),
+        title: const Text("Confirm Value"),
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text("No"),
+            child: const Text("No"),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text("Yes"),
+            child: const Text("Yes"),
           ),
         ],
       ),
@@ -605,10 +607,10 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Workout Session'),
+            const Text('Workout Session'),
             Text(
               "Duration: ${_formatDuration(_duration)}",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
             ),
           ],
         ),
@@ -620,17 +622,17 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextField(
-              decoration: InputDecoration(labelText: 'Workout Name'),
+              decoration: const InputDecoration(labelText: 'Workout Name'),
               controller: _workoutNameController,
             ),
             TextField(
-              decoration: InputDecoration(labelText: 'Description'),
+              decoration: const InputDecoration(labelText: 'Description'),
               controller: _workoutDescriptionController,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _openExerciseSelection,
-              child: Text('Add Exercise'),
+              child: const Text('Add Exercise'),
             ),
             Expanded(
               child: ListView.builder(
@@ -643,9 +645,9 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                   exercise['focusNodes'] ??= [];
 
                   return Card(
-                    margin: EdgeInsets.symmetric(vertical: 8),
+                    margin: const EdgeInsets.symmetric(vertical: 8),
                     child: Padding(
-                      padding: EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -659,29 +661,30 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                   children: [
                                     Text(
                                       exercise['name'] ?? 'Unnamed Exercise',
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold),
                                     ),
                                     Text(
                                       "${exercise['category'] ?? 'Unknown Category'} | ${exercise['bodyPart'] ?? 'Unknown Body Part'}${exercise['subcategory'] != null ? ' (${exercise['subcategory']})' : ''}",
-                                      style: TextStyle(color: Colors.grey),
+                                      style: const TextStyle(color: Colors.grey),
                                     ),
                                   ],
                                 ),
                               ),
                               IconButton(
-                                icon: Icon(Icons.info_outline, color: Colors.blue),
+                                icon: const Icon(Icons.info_outline,
+                                    color: Colors.blue),
                                 onPressed: () {
                                   _showExerciseHistoryForExercise(exercise);
                                 },
                               ),
                               IconButton(
-                                icon: Icon(Icons.add, color: Colors.green),
+                                icon: const Icon(Icons.add, color: Colors.green),
                                 onPressed: () => _addSet(exerciseIndex),
                               ),
                               IconButton(
-                                icon: Icon(Icons.delete, color: Colors.red),
+                                icon: const Icon(Icons.delete, color: Colors.red),
                                 onPressed: () => _removeExercise(exerciseIndex),
                               ),
                             ],
@@ -708,10 +711,10 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                         MainAxisAlignment.spaceEvenly,
                                         children: [
                                           if (set.containsKey('reps'))
-                                            Container(
+                                            SizedBox(
                                               width: 50,
                                               child: TextField(
-                                                decoration: InputDecoration(
+                                                decoration: const InputDecoration(
                                                     labelText: "Reps"),
                                                 keyboardType:
                                                 TextInputType.number,
@@ -727,16 +730,19 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                               ),
                                             ),
                                           if (set.containsKey('weight'))
-                                            Container(
+                                            SizedBox(
                                               width: 70,
                                               child: TextField(
-                                                decoration: InputDecoration(
+                                                decoration: const InputDecoration(
                                                     labelText: "Weight (lbs)"),
                                                 keyboardType:
-                                                TextInputType.numberWithOptions(
+                                                const TextInputType
+                                                    .numberWithOptions(
                                                     decimal: true),
-                                                controller: controllers['weight'],
-                                                focusNode: focusNodes['weight'],
+                                                controller:
+                                                controllers['weight'],
+                                                focusNode:
+                                                focusNodes['weight'],
                                                 onSubmitted: (value) {
                                                   _verifyAndUpdateWeight(
                                                     exerciseIndex,
@@ -747,10 +753,11 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                               ),
                                             ),
                                           if (set.containsKey('duration'))
-                                            Container(
+                                            SizedBox(
                                               width: 70,
                                               child: TextField(
-                                                decoration: InputDecoration(
+                                                decoration:
+                                                const InputDecoration(
                                                   labelText: "Duration (sec)",
                                                 ),
                                                 keyboardType:
@@ -765,13 +772,15 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                               ),
                                             ),
                                           if (set.containsKey('miles'))
-                                            Container(
+                                            SizedBox(
                                               width: 70,
                                               child: TextField(
-                                                decoration: InputDecoration(
+                                                decoration:
+                                                const InputDecoration(
                                                     labelText: "Miles"),
                                                 keyboardType:
-                                                TextInputType.numberWithOptions(
+                                                const TextInputType
+                                                    .numberWithOptions(
                                                     decimal: true),
                                                 onChanged: (value) {
                                                   _updateMiles(
@@ -790,15 +799,16 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                     Row(
                                       children: [
                                         IconButton(
-                                          icon:
-                                          Icon(Icons.add, color: Colors.green),
-                                          onPressed: () => _addSet(exerciseIndex),
+                                          icon: const Icon(Icons.add,
+                                              color: Colors.green),
+                                          onPressed: () =>
+                                              _addSet(exerciseIndex),
                                         ),
                                         IconButton(
-                                          icon:
-                                          Icon(Icons.remove, color: Colors.red),
-                                          onPressed: () => _removeSet(
-                                              exerciseIndex, setIndex),
+                                          icon: const Icon(Icons.remove,
+                                              color: Colors.red),
+                                          onPressed: () =>
+                                              _removeSet(exerciseIndex, setIndex),
                                         ),
                                       ],
                                     ),
@@ -820,12 +830,13 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               children: [
                 ElevatedButton(
                   onPressed: _finishWorkout,
-                  child: Text('Finish Workout'),
+                  child: const Text('Finish Workout'),
                 ),
                 ElevatedButton(
                   onPressed: _cancelWorkout,
-                  child: Text('Cancel Workout'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  style:
+                  ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: const Text('Cancel Workout'),
                 ),
               ],
             ),
