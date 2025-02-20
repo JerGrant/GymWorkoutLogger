@@ -27,23 +27,29 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   final ScrollController _scrollController = ScrollController();
 
   final TextEditingController _workoutNameController = TextEditingController();
-  final TextEditingController _workoutDescriptionController = TextEditingController();
+  final TextEditingController _workoutDescriptionController =
+  TextEditingController();
 
   @override
   void initState() {
     super.initState();
+
+    // If a preloaded workout is passed, populate the fields
     if (widget.preloadedWorkout != null) {
       _workoutName = widget.preloadedWorkout!['name'] ?? "Untitled Workout";
       _workoutDescription = widget.preloadedWorkout!['description'] ?? "";
       _selectedExercises = widget.preloadedWorkout!['exercises'] != null
           ? List<Map<String, dynamic>>.from(widget.preloadedWorkout!['exercises'])
           : [];
+
+      // Initialize controllers & focusNodes for each set
       for (var exercise in _selectedExercises) {
         exercise['controllers'] ??= [];
         exercise['focusNodes'] ??= [];
         for (var i = 0; i < (exercise['sets']?.length ?? 0); i++) {
           Map<String, TextEditingController> ctrl = {};
           Map<String, FocusNode> nodes = {};
+
           if (exercise['sets'][i].containsKey('reps')) {
             final repsVal = exercise['sets'][i]['reps'];
             ctrl['reps'] = TextEditingController(
@@ -51,6 +57,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
             );
             nodes['reps'] = FocusNode();
             nodes['reps']!.addListener(() {
+              // If the user leaves the reps field, update the stored value
               if (!nodes['reps']!.hasFocus) {
                 _verifyAndUpdateReps(
                   _selectedExercises.indexOf(exercise),
@@ -60,13 +67,17 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               }
             });
           }
+
           if (exercise['sets'][i].containsKey('weight')) {
             final weightVal = exercise['sets'][i]['weight'];
             ctrl['weight'] = TextEditingController(
-              text: (weightVal == null || weightVal == 0.0) ? "" : weightVal.toString(),
+              text: (weightVal == null || weightVal == 0.0)
+                  ? ""
+                  : weightVal.toString(),
             );
             nodes['weight'] = FocusNode();
             nodes['weight']!.addListener(() {
+              // If the user leaves the weight field, update the stored value
               if (!nodes['weight']!.hasFocus) {
                 _verifyAndUpdateWeight(
                   _selectedExercises.indexOf(exercise),
@@ -76,13 +87,17 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               }
             });
           }
+
           exercise['controllers'].add(ctrl);
           exercise['focusNodes'].add(nodes);
         }
       }
     }
+
     _workoutNameController.text = _workoutName;
     _workoutDescriptionController.text = _workoutDescription;
+
+    // Keep local state updated as user types in workout name/description
     _workoutNameController.addListener(() {
       setState(() {
         _workoutName = _workoutNameController.text;
@@ -94,6 +109,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       });
     });
 
+    // Create the workout doc in Firestore & start the timer
     _startWorkout();
   }
 
@@ -123,23 +139,46 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
   }
 
+  /// Force-read all text controllers before saving so we don't lose unsaved input
   Future<void> _finishWorkout() async {
+    // 1) Stop the timer
     _timer?.cancel();
 
-    // Clean up _selectedExercises by removing non-serializable keys.
-    List<Map<String, dynamic>> cleanedExercises = _selectedExercises.map((exercise) {
+    // 2) Final pass: read from each controller so sets array is updated
+    for (int i = 0; i < _selectedExercises.length; i++) {
+      for (int j = 0; j < (_selectedExercises[i]['sets']?.length ?? 0); j++) {
+        var repsCtrl = _selectedExercises[i]['controllers'][j]['reps'];
+        var weightCtrl = _selectedExercises[i]['controllers'][j]['weight'];
+
+        if (repsCtrl != null) {
+          int reps = int.tryParse(repsCtrl.text) ?? 0;
+          _updateReps(i, j, reps);
+        }
+        if (weightCtrl != null) {
+          double w = double.tryParse(weightCtrl.text) ?? 0.0;
+          _updateWeight(i, j, w);
+        }
+      }
+    }
+
+    // 3) Clean up _selectedExercises by removing non-serializable keys
+    List<Map<String, dynamic>> cleanedExercises =
+    _selectedExercises.map((exercise) {
       var cleaned = Map<String, dynamic>.from(exercise);
       cleaned.remove("controllers");
       cleaned.remove("focusNodes");
       return cleaned;
     }).toList();
 
+    // 4) Update Firestore with final data
     await _workoutRef?.update({
-      'duration': _duration ~/ 60,
+      'duration': _duration ~/ 60, // or store total seconds if you prefer
       'name': _workoutName,
       'description': _workoutDescription,
       'exercises': cleanedExercises,
     });
+
+    // 5) Pop back to previous screen
     Navigator.pop(context);
   }
 
@@ -149,14 +188,16 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     Navigator.pop(context);
   }
 
+  /// Converts older fields to strings & ensures 'sets' is a list
   Map<String, dynamic> convertExerciseFields(Map<String, dynamic> exercise) {
     List<String> fields = ['name', 'category', 'bodyPart', 'subcategory'];
     Map<String, dynamic> newExercise = Map.from(exercise);
     for (var field in fields) {
       if (newExercise.containsKey(field)) {
         if (newExercise[field] is List) {
-          newExercise[field] =
-              (newExercise[field] as List).map((e) => e.toString()).join(', ');
+          newExercise[field] = (newExercise[field] as List)
+              .map((e) => e.toString())
+              .join(', ');
         } else if (newExercise[field] == null) {
           newExercise[field] = '';
         }
@@ -179,7 +220,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           onExercisesSelected: (selected) {
             setState(() {
               for (var exercise in selected) {
-                Map<String, dynamic> fixedExercise = convertExerciseFields(exercise);
+                Map<String, dynamic> fixedExercise =
+                convertExerciseFields(exercise);
                 fixedExercise['id'] = exercise['id'];
                 fixedExercise['controllers'] = <Map<String, TextEditingController>>[];
                 fixedExercise['focusNodes'] = <Map<String, FocusNode>>[];
@@ -194,6 +236,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
   void _removeExercise(int index) {
     setState(() {
+      // Dispose controllers/focus nodes
       for (var map in _selectedExercises[index]['controllers']) {
         map.values.forEach((c) => c.dispose());
       }
@@ -229,6 +272,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     final exercise = _selectedExercises[exerciseIndex];
     final category = exercise['category']?.toString() ?? "";
     final newSet = _getDefaultSet(category);
+
     Map<String, TextEditingController> newControllers = {};
     Map<String, FocusNode> newFocusNodes = {};
 
@@ -258,6 +302,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         }
       });
     }
+
     setState(() {
       exercise['sets'].add(newSet);
       exercise['controllers'] ??= <Map<String, TextEditingController>>[];
@@ -265,6 +310,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       exercise['controllers'].add(newControllers);
       exercise['focusNodes'].add(newFocusNodes);
     });
+
+    // Scroll to bottom to show the newly added set
     Future.delayed(Duration(milliseconds: 200), () {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
@@ -279,9 +326,11 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       Map<String, TextEditingController> ctrls =
       _selectedExercises[exerciseIndex]['controllers'][setIndex];
       ctrls.values.forEach((c) => c.dispose());
+
       Map<String, FocusNode> nodes =
       _selectedExercises[exerciseIndex]['focusNodes'][setIndex];
       nodes.values.forEach((n) => n.dispose());
+
       _selectedExercises[exerciseIndex]['sets'].removeAt(setIndex);
       _selectedExercises[exerciseIndex]['controllers'].removeAt(setIndex);
       _selectedExercises[exerciseIndex]['focusNodes'].removeAt(setIndex);
@@ -322,6 +371,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     return "${minutes}m ${remainingSeconds}s";
   }
 
+  /// Fetch exercise history if needed
   Future<Map<String, dynamic>> _fetchExerciseHistory(String exerciseId) async {
     List<Map<String, dynamic>> allEntries = [];
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -340,6 +390,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       Timestamp? ts = doc['timestamp'];
       DateTime workoutDate = ts != null ? ts.toDate() : DateTime.now();
       List exercises = doc['exercises'] ?? [];
+
       for (var ex in exercises) {
         if (ex['id'] == exerciseId) {
           double volume = 0.0;
@@ -427,17 +478,21 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (bestEntry != null) ...[
-                  Text("Personal Best",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(
+                    "Personal Best",
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   _buildHistoryCard(bestEntry, showTrophy: true),
                   SizedBox(height: 20),
                 ],
-                Text("Recent History",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(
+                  "Recent History",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
                 if (recent.isEmpty)
                   Text("No recent entries.")
                 else
-                  for (var entry in recent) _buildHistoryCard(entry, showTrophy: false),
+                  for (var entry in recent) _buildHistoryCard(entry),
               ],
             ),
           ),
@@ -502,15 +557,19 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   }
 
   Future<void> _verifyAndUpdateReps(
-      int exerciseIndex, int setIndex, String valueStr) async {
+      int exerciseIndex,
+      int setIndex,
+      String valueStr,
+      ) async {
     int reps = int.tryParse(valueStr) ?? 0;
     if (reps > 100) {
-      bool confirmed =
-      await _showVerificationDialog("You entered over 100 reps. Are you sure?");
+      bool confirmed = await _showVerificationDialog(
+          "You entered over 100 reps. Are you sure?");
       if (!confirmed) {
         setState(() {
           _selectedExercises[exerciseIndex]['sets'][setIndex]['reps'] = null;
-          _selectedExercises[exerciseIndex]['controllers'][setIndex]['reps']?.text = "";
+          _selectedExercises[exerciseIndex]['controllers'][setIndex]['reps']
+              ?.text = "";
         });
         return;
       }
@@ -519,14 +578,19 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   }
 
   Future<void> _verifyAndUpdateWeight(
-      int exerciseIndex, int setIndex, String valueStr) async {
+      int exerciseIndex,
+      int setIndex,
+      String valueStr,
+      ) async {
     double weight = double.tryParse(valueStr) ?? 0.0;
     if (weight > 500) {
-      bool confirmed = await _showVerificationDialog("You entered over 500 lbs. Are you sure?");
+      bool confirmed = await _showVerificationDialog(
+          "You entered over 500 lbs. Are you sure?");
       if (!confirmed) {
         setState(() {
           _selectedExercises[exerciseIndex]['sets'][setIndex]['weight'] = null;
-          _selectedExercises[exerciseIndex]['controllers'][setIndex]['weight']?.text = "";
+          _selectedExercises[exerciseIndex]['controllers'][setIndex]['weight']
+              ?.text = "";
         });
         return;
       }
@@ -577,6 +641,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                   exercise['sets'] ??= [];
                   exercise['controllers'] ??= [];
                   exercise['focusNodes'] ??= [];
+
                   return Card(
                     margin: EdgeInsets.symmetric(vertical: 8),
                     child: Padding(
@@ -584,6 +649,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Exercise header row
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -620,87 +686,126 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                               ),
                             ],
                           ),
+                          // Sets
                           Column(
-                            children: List.generate(exercise['sets'].length, (setIndex) {
-                              var set = exercise['sets'][setIndex];
-                              Map<String, TextEditingController> controllers =
-                              exercise['controllers'][setIndex];
-                              Map<String, FocusNode> focusNodes =
-                              exercise['focusNodes'][setIndex];
-                              return Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text("Set ${setIndex + 1}"),
-                                  Expanded(
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: List.generate(
+                              exercise['sets'].length,
+                                  (setIndex) {
+                                var set = exercise['sets'][setIndex];
+                                Map<String, TextEditingController> controllers =
+                                exercise['controllers'][setIndex];
+                                Map<String, FocusNode> focusNodes =
+                                exercise['focusNodes'][setIndex];
+
+                                return Row(
+                                  mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text("Set ${setIndex + 1}"),
+                                    Expanded(
+                                      child: Row(
+                                        mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
+                                        children: [
+                                          if (set.containsKey('reps'))
+                                            Container(
+                                              width: 50,
+                                              child: TextField(
+                                                decoration: InputDecoration(
+                                                    labelText: "Reps"),
+                                                keyboardType:
+                                                TextInputType.number,
+                                                controller: controllers['reps'],
+                                                focusNode: focusNodes['reps'],
+                                                onSubmitted: (value) {
+                                                  _verifyAndUpdateReps(
+                                                    exerciseIndex,
+                                                    setIndex,
+                                                    value,
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          if (set.containsKey('weight'))
+                                            Container(
+                                              width: 70,
+                                              child: TextField(
+                                                decoration: InputDecoration(
+                                                    labelText: "Weight (lbs)"),
+                                                keyboardType:
+                                                TextInputType.numberWithOptions(
+                                                    decimal: true),
+                                                controller: controllers['weight'],
+                                                focusNode: focusNodes['weight'],
+                                                onSubmitted: (value) {
+                                                  _verifyAndUpdateWeight(
+                                                    exerciseIndex,
+                                                    setIndex,
+                                                    value,
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          if (set.containsKey('duration'))
+                                            Container(
+                                              width: 70,
+                                              child: TextField(
+                                                decoration: InputDecoration(
+                                                  labelText: "Duration (sec)",
+                                                ),
+                                                keyboardType:
+                                                TextInputType.number,
+                                                onChanged: (value) {
+                                                  _updateDuration(
+                                                    exerciseIndex,
+                                                    setIndex,
+                                                    int.tryParse(value) ?? 0,
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          if (set.containsKey('miles'))
+                                            Container(
+                                              width: 70,
+                                              child: TextField(
+                                                decoration: InputDecoration(
+                                                    labelText: "Miles"),
+                                                keyboardType:
+                                                TextInputType.numberWithOptions(
+                                                    decimal: true),
+                                                onChanged: (value) {
+                                                  _updateMiles(
+                                                    exerciseIndex,
+                                                    setIndex,
+                                                    double.tryParse(value) ??
+                                                        0.0,
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    // Add/Remove set
+                                    Row(
                                       children: [
-                                        if (set.containsKey('reps'))
-                                          Container(
-                                            width: 50,
-                                            child: TextField(
-                                              decoration: InputDecoration(labelText: "Reps"),
-                                              keyboardType: TextInputType.number,
-                                              controller: controllers['reps'],
-                                              focusNode: focusNodes['reps'],
-                                              onSubmitted: (value) {
-                                                _verifyAndUpdateReps(exerciseIndex, setIndex, value);
-                                              },
-                                            ),
-                                          ),
-                                        if (set.containsKey('weight'))
-                                          Container(
-                                            width: 70,
-                                            child: TextField(
-                                              decoration: InputDecoration(labelText: "Weight (lbs)"),
-                                              keyboardType: TextInputType.numberWithOptions(decimal: true),
-                                              controller: controllers['weight'],
-                                              focusNode: focusNodes['weight'],
-                                              onSubmitted: (value) {
-                                                _verifyAndUpdateWeight(exerciseIndex, setIndex, value);
-                                              },
-                                            ),
-                                          ),
-                                        if (set.containsKey('duration'))
-                                          Container(
-                                            width: 70,
-                                            child: TextField(
-                                              decoration: InputDecoration(labelText: "Duration (sec)"),
-                                              keyboardType: TextInputType.number,
-                                              onChanged: (value) {
-                                                _updateDuration(exerciseIndex, setIndex, int.tryParse(value) ?? 0);
-                                              },
-                                            ),
-                                          ),
-                                        if (set.containsKey('miles'))
-                                          Container(
-                                            width: 70,
-                                            child: TextField(
-                                              decoration: InputDecoration(labelText: "Miles"),
-                                              keyboardType: TextInputType.numberWithOptions(decimal: true),
-                                              onChanged: (value) {
-                                                _updateMiles(exerciseIndex, setIndex, double.tryParse(value) ?? 0.0);
-                                              },
-                                            ),
-                                          ),
+                                        IconButton(
+                                          icon:
+                                          Icon(Icons.add, color: Colors.green),
+                                          onPressed: () => _addSet(exerciseIndex),
+                                        ),
+                                        IconButton(
+                                          icon:
+                                          Icon(Icons.remove, color: Colors.red),
+                                          onPressed: () => _removeSet(
+                                              exerciseIndex, setIndex),
+                                        ),
                                       ],
                                     ),
-                                  ),
-                                  Row(
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(Icons.add, color: Colors.green),
-                                        onPressed: () => _addSet(exerciseIndex),
-                                      ),
-                                      IconButton(
-                                        icon: Icon(Icons.remove, color: Colors.red),
-                                        onPressed: () => _removeSet(exerciseIndex, setIndex),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              );
-                            }),
+                                  ],
+                                );
+                              },
+                            ),
                           ),
                         ],
                       ),
@@ -709,6 +814,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 },
               ),
             ),
+            // Finish / Cancel buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -734,6 +840,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     _timer?.cancel();
     _workoutNameController.dispose();
     _workoutDescriptionController.dispose();
+
+    // Dispose all controllers/focusNodes for each exercise
     for (var exercise in _selectedExercises) {
       if (exercise['controllers'] != null) {
         for (var ctrlMap in exercise['controllers']) {

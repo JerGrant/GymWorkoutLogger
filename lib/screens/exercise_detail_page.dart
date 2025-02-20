@@ -14,13 +14,17 @@ class ExerciseDetailsPage extends StatefulWidget {
 class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
   bool _isEditing = false;
 
+  // Text Controllers
   TextEditingController _nameController = TextEditingController();
   TextEditingController _descriptionController = TextEditingController();
   TextEditingController _notesController = TextEditingController();
-  String selectedCategory = "";
-  String? selectedMainBodyPart;
-  String? selectedSubBodyPart;
 
+  // Dropdown values
+  String selectedCategory = "";
+  String? selectedMainBodyPart;   // e.g. "Legs"
+  String? selectedSubBodyPart;    // e.g. "Hamstrings"
+
+  /// List of categories for the "Category" dropdown
   final List<String> categories = [
     "Barbell",
     "Dumbbell",
@@ -40,6 +44,7 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
     "Stretching & Mobility"
   ];
 
+  /// Hierarchy: Main body part -> possible sub-muscle groups
   final Map<String, List<String>> bodyPartHierarchy = {
     "Arms": ["Biceps", "Triceps", "Forearms"],
     "Back": ["Traps", "Lats", "Lower Back"],
@@ -56,23 +61,62 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
   @override
   void initState() {
     super.initState();
-    var data = widget.exercise.data() as Map<String, dynamic>? ?? {};
 
+    /// Grab existing Firestore data
+    var data = widget.exercise.data() as Map<String, dynamic>? ?? {};
+    debugPrint(">>> Firestore raw data: $data");
+
+    // Populate text fields
     _nameController.text = data["name"] ?? "";
     _descriptionController.text = data["description"] ?? "";
     _notesController.text = data["notes"] ?? "";
+
+    // Populate category (or default to the first in the list)
     selectedCategory = data["category"] ?? categories.first;
 
-    selectedSubBodyPart = data["bodyPart"];
-    if (selectedSubBodyPart != null) {
-      selectedMainBodyPart = bodyPartHierarchy.entries.firstWhere(
-            (entry) => entry.value.contains(selectedSubBodyPart),
-        orElse: () => const MapEntry("Other", []),
-      ).key;
+    // Read new fields if present:
+    String? mainBP = data["mainBodyPart"];    // Might be null
+    String? subBP = data["subBodyPart"];      // Might be null
+
+    // Fallback to older fields if new ones are missing:
+    // Use "bodyPart" for main part and "subcategory" for specific muscle group.
+    String? oldMain = data["bodyPart"];
+    String? oldSub = data["subcategory"];
+
+    if (mainBP == null || mainBP.isEmpty) {
+      mainBP = oldMain; // e.g., "Shoulders"
     }
-    if (!bodyPartHierarchy.containsKey(selectedMainBodyPart)) {
-      selectedMainBodyPart = null;
+    if (subBP == null || subBP.isEmpty) {
+      subBP = oldSub; // e.g., "Front Delts"
     }
+
+    // Debug prints:
+    debugPrint(">>> mainBP after fallback: $mainBP");
+    debugPrint(">>> subBP after fallback: $subBP");
+
+    // If we do have a subBP, ensure it matches one of the valid options for mainBP.
+    if (mainBP != null && mainBP.isNotEmpty) {
+      final validSubs = bodyPartHierarchy[mainBP] ?? [];
+      if (subBP != null && subBP.isNotEmpty && !validSubs.contains(subBP)) {
+        debugPrint(
+          "WARNING: subBodyPart '$subBP' not found in $validSubs. Setting subBP to null.",
+        );
+        subBP = null;
+      }
+    }
+
+    // Now set the selected values.
+    selectedMainBodyPart = (mainBP != null && mainBP.isNotEmpty) ? mainBP : null;
+    selectedSubBodyPart = (subBP != null && subBP.isNotEmpty) ? subBP : null;
+
+    // Fallback: if we still don't have a valid main body part, default to "Other".
+    if (selectedMainBodyPart == null ||
+        !bodyPartHierarchy.containsKey(selectedMainBodyPart)) {
+      selectedMainBodyPart = "Other";
+    }
+
+    debugPrint(">>> final mainBP: $selectedMainBodyPart");
+    debugPrint(">>> final subBP: $selectedSubBodyPart");
   }
 
   /// Save updates to Firestore.
@@ -94,10 +138,15 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           .update({
         'name': _nameController.text,
         'category': selectedCategory,
-        'bodyPart': selectedSubBodyPart,
+        // Store both new and old fields for compatibility:
+        'mainBodyPart': selectedMainBodyPart,
+        'subBodyPart': selectedSubBodyPart,
+        'bodyPart': selectedMainBodyPart,
+        'subcategory': selectedSubBodyPart,
         'description': _descriptionController.text,
         'notes': _notesController.text,
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Exercise updated successfully!")),
       );
@@ -244,7 +293,14 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
     final data = widget.exercise.data() as Map<String, dynamic>? ?? {};
     final exerciseName = data["name"] ?? "";
     final exerciseCategory = data["category"] ?? "";
-    final exerciseBodyPart = data["bodyPart"] ?? "";
+
+    // For backward compatibility, use new fields if present; otherwise fallback:
+    final exerciseMainBodyPart = data["mainBodyPart"] ??
+        data["bodyPart"] ??
+        "Other";
+    final exerciseSubBodyPart =
+        data["subBodyPart"] ?? data["subcategory"] ?? "";
+
     final exerciseDescription = data["description"] ?? "";
     final exerciseNotes = data["notes"] ?? "";
 
@@ -258,11 +314,15 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic info
-          Text("Name: $exerciseName",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(
+            "Name: $exerciseName",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           SizedBox(height: 8),
           Text("Category: $exerciseCategory"),
-          Text("Body Part: $exerciseBodyPart"),
+          Text("Main Body Part: $exerciseMainBodyPart"),
+          if (exerciseSubBodyPart.isNotEmpty)
+            Text("Specific Muscle Group: $exerciseSubBodyPart"),
           if (exerciseDescription.isNotEmpty) ...[
             SizedBox(height: 8),
             Text("Description: $exerciseDescription"),
@@ -274,8 +334,10 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           SizedBox(height: 20),
 
           // Personal Best
-          Text("Personal Best",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(
+            "Personal Best",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           if (bestEntry == null)
             Text("No data found.")
           else
@@ -293,8 +355,10 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           SizedBox(height: 20),
 
           // Recent History
-          Text("Recent History",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(
+            "Recent History",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           if (recent.isEmpty)
             Text("No recent data found.")
           else
@@ -366,6 +430,8 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
             decoration: InputDecoration(labelText: "Category"),
           ),
           SizedBox(height: 8),
+
+          // MAIN BODY PART
           DropdownButtonFormField<String>(
             value: bodyPartHierarchy.containsKey(selectedMainBodyPart)
                 ? selectedMainBodyPart
@@ -382,19 +448,22 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
             onChanged: (value) {
               setState(() {
                 selectedMainBodyPart = value;
-                selectedSubBodyPart = null;
+                selectedSubBodyPart = null; // reset sub-body part
               });
             },
             decoration: InputDecoration(labelText: "Main Body Part"),
           ),
+          SizedBox(height: 8),
+
+          // SUB BODY PART (only if the selected main part has sub-muscles)
           if (selectedMainBodyPart != null &&
               bodyPartHierarchy[selectedMainBodyPart]!.isNotEmpty)
             DropdownButtonFormField<String>(
-              value: bodyPartHierarchy[selectedMainBodyPart]!
+              value: bodyPartHierarchy[selectedMainBodyPart!]!
                   .contains(selectedSubBodyPart)
                   ? selectedSubBodyPart
                   : null,
-              items: bodyPartHierarchy[selectedMainBodyPart]!.map((subPart) {
+              items: bodyPartHierarchy[selectedMainBodyPart!]!.map((subPart) {
                 return DropdownMenuItem(
                   value: subPart,
                   child: Text(subPart),
@@ -408,12 +477,16 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
               decoration: InputDecoration(labelText: "Specific Muscle Group"),
             ),
           SizedBox(height: 8),
+
+          // DESCRIPTION
           TextField(
             controller: _descriptionController,
             decoration: InputDecoration(labelText: "Description"),
             maxLines: 3,
           ),
           SizedBox(height: 8),
+
+          // NOTES
           TextField(
             controller: _notesController,
             decoration: InputDecoration(labelText: "Notes"),

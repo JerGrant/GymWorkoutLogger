@@ -6,12 +6,12 @@ import 'package:intl/intl.dart';
 import 'calendar_filter_page.dart';
 import 'workout_history_detail_page.dart';
 
-class workout_history_page extends StatefulWidget {
+class WorkoutHistoryPage extends StatefulWidget {
   @override
   _WorkoutHistoryPageState createState() => _WorkoutHistoryPageState();
 }
 
-class _WorkoutHistoryPageState extends State<workout_history_page> {
+class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final User? user = FirebaseAuth.instance.currentUser;
   String searchQuery = "";
@@ -118,7 +118,6 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
-
           // Sorting dropdown
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 10.0),
@@ -139,7 +138,6 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
               }).toList(),
             ),
           ),
-
           // Search field
           Padding(
             padding: EdgeInsets.all(10.0),
@@ -154,7 +152,6 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
               onChanged: _onSearchChanged,
             ),
           ),
-
           // Workout List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
@@ -199,7 +196,7 @@ class _WorkoutHistoryPageState extends State<workout_history_page> {
                             (workout['timestamp'] as Timestamp).toDate(),
                           ),
                         ),
-                        // We keep the fitness_center icon + star icon
+                        // Icons for fitness_center and star
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [

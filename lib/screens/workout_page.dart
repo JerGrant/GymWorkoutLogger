@@ -1,4 +1,4 @@
-import 'dart:math' as math; // <-- ADDED: For math.max
+import 'dart:math' as math; // For math.max
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -7,7 +7,6 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 import 'workout_session_page.dart';
-import 'workout_history_page.dart';
 import 'favorite_workouts_page.dart';
 
 class WorkoutPage extends StatefulWidget {
@@ -36,7 +35,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
   List<BarChartGroupData> weeklyBarGroups = [];
   List<DateTime> sortedWeekDates = [];
 
-  // <-- ADDED: track the maximum Y value for the chart
+  // Track the maximum Y value for the chart
   double maxYForChart = 0;
 
   @override
@@ -200,7 +199,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
       );
     }
 
-    // <-- ADDED: Calculate maxY based on the highest bar
+    // Calculate maxY based on the highest bar
     double tempMaxY = 0;
     for (var g in groups) {
       if (g.barRods.isNotEmpty) {
@@ -351,7 +350,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => workout_history_page()),
+                  MaterialPageRoute(builder: (context) => WorkoutHistoryPage()),
                 );
               },
             ),
@@ -470,7 +469,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
           height: 200,
           child: BarChart(
             BarChartData(
-              // Use our computed maxYForChart
               maxY: maxYForChart,
               minY: 0,
               barGroups: weeklyBarGroups,
