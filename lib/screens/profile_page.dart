@@ -43,16 +43,57 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isNewestFirst = true;
 
   List<String> states = [
-    "Select State", "Alabama", "Alaska", "Arizona", "Arkansas", "California",
-    "Colorado", "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii",
-    "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana",
-    "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
-    "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
-    "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina",
-    "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania",
-    "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas",
-    "Utah", "Vermont", "Virginia", "Washington", "West Virginia",
-    "Wisconsin", "Wyoming"
+    "Select State",
+    "Alabama",
+    "Alaska",
+    "Arizona",
+    "Arkansas",
+    "California",
+    "Colorado",
+    "Connecticut",
+    "Delaware",
+    "Florida",
+    "Georgia",
+    "Hawaii",
+    "Idaho",
+    "Illinois",
+    "Indiana",
+    "Iowa",
+    "Kansas",
+    "Kentucky",
+    "Louisiana",
+    "Maine",
+    "Maryland",
+    "Massachusetts",
+    "Michigan",
+    "Minnesota",
+    "Mississippi",
+    "Missouri",
+    "Montana",
+    "Nebraska",
+    "Nevada",
+    "New Hampshire",
+    "New Jersey",
+    "New Mexico",
+    "New York",
+    "North Carolina",
+    "North Dakota",
+    "Ohio",
+    "Oklahoma",
+    "Oregon",
+    "Pennsylvania",
+    "Rhode Island",
+    "South Carolina",
+    "South Dakota",
+    "Tennessee",
+    "Texas",
+    "Utah",
+    "Vermont",
+    "Virginia",
+    "Washington",
+    "West Virginia",
+    "Wisconsin",
+    "Wyoming"
   ];
 
   @override
@@ -100,7 +141,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _uploadProfileImage() async {
     if (!isEditing) return; // Only allow changing image in edit mode
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final pickedFile =
+    await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
     File file = File(pickedFile.path);
     try {
@@ -119,14 +161,16 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _uploadProgressPicture() async {
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final pickedFile =
+    await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
     File file = File(pickedFile.path);
     // Prompt user for a caption or notes
     String? caption = await showDialog<String>(
       context: context,
       builder: (context) {
-        final TextEditingController _captionController = TextEditingController();
+        final TextEditingController _captionController =
+        TextEditingController();
         return AlertDialog(
           title: Text("Enter Caption/Notes"),
           content: TextField(
@@ -139,7 +183,8 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Text("Cancel"),
             ),
             ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(_captionController.text),
+              onPressed: () =>
+                  Navigator.of(context).pop(_captionController.text),
               child: Text("Save"),
             ),
           ],
@@ -148,7 +193,8 @@ class _ProfilePageState extends State<ProfilePage> {
     );
     if (caption == null) return;
     try {
-      String filePath = 'progress_pictures/${_user!.uid}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+      String filePath =
+          'progress_pictures/${_user!.uid}/${DateTime.now().millisecondsSinceEpoch}.jpg';
       TaskSnapshot snapshot = await _storage.ref(filePath).putFile(file);
       String downloadUrl = await snapshot.ref.getDownloadURL();
       await _db
@@ -222,10 +268,13 @@ class _ProfilePageState extends State<ProfilePage> {
           .orderBy('timestamp', descending: _isNewestFirst)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return Text("Error loading progress pictures.");
-        if (snapshot.connectionState == ConnectionState.waiting) return CircularProgressIndicator();
+        if (snapshot.hasError)
+          return Text("Error loading progress pictures.");
+        if (snapshot.connectionState == ConnectionState.waiting)
+          return CircularProgressIndicator();
         final docs = snapshot.data!.docs;
-        if (docs.isEmpty) return Text("No progress pictures uploaded yet.");
+        if (docs.isEmpty)
+          return Text("No progress pictures uploaded yet.");
         return GridView.builder(
           shrinkWrap: true,
           physics: NeverScrollableScrollPhysics(),
@@ -241,7 +290,8 @@ class _ProfilePageState extends State<ProfilePage> {
             String caption = data['caption'] ?? "";
             Timestamp? timestamp = data['timestamp'] as Timestamp?;
             String timeString = timestamp != null
-                ? DateTime.fromMillisecondsSinceEpoch(timestamp.millisecondsSinceEpoch)
+                ? DateTime.fromMillisecondsSinceEpoch(
+                timestamp.millisecondsSinceEpoch)
                 .toLocal()
                 .toString()
                 : "";
@@ -369,6 +419,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false, // Removes the back arrow
         title: Text("Profile"),
         actions: [
           IconButton(
@@ -418,7 +469,8 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 Text(
                   "Progress Pictures",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Row(
                   children: [

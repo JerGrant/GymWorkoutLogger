@@ -32,13 +32,27 @@ class _ExercisePageState extends State<ExercisePage> {
   };
 
   final List<String> categories = [
-    "Barbell", "Dumbbell", "Cables", "Machine", "Other", "Weighted Bodyweight",
-    "Assisted Body", "Laps", "Reps", "Cardio Exercises", "Duration", "Kettlebell",
-    "Plyometrics", "Resistance Bands", "Isometrics", "Stretching & Mobility"
+    "Barbell",
+    "Dumbbell",
+    "Cables",
+    "Machine",
+    "Other",
+    "Weighted Bodyweight",
+    "Assisted Body",
+    "Laps",
+    "Reps",
+    "Cardio Exercises",
+    "Duration",
+    "Kettlebell",
+    "Plyometrics",
+    "Resistance Bands",
+    "Isometrics",
+    "Stretching & Mobility"
   ];
 
   /// **Applies Search & Filters**
-  List<QueryDocumentSnapshot<Object?>> applyFilters(List<QueryDocumentSnapshot<Object?>> exercises) {
+  List<QueryDocumentSnapshot<Object?>> applyFilters(
+      List<QueryDocumentSnapshot<Object?>> exercises) {
     return exercises.where((exercise) {
       var data = exercise.data() as Map<String, dynamic>? ?? {};
 
@@ -47,7 +61,8 @@ class _ExercisePageState extends State<ExercisePage> {
       String bodyPart = data['bodyPart']?.toString() ?? "";
 
       bool matchesSearch = name.contains(searchQuery.toLowerCase());
-      bool matchesCategory = selectedCategory == null || category == selectedCategory;
+      bool matchesCategory =
+          selectedCategory == null || category == selectedCategory;
       bool matchesBodyPart = selectedBodyPart == null ||
           bodyPart == selectedBodyPart ||
           (bodyPartHierarchy[selectedBodyPart]?.contains(bodyPart) ?? false);
@@ -57,15 +72,14 @@ class _ExercisePageState extends State<ExercisePage> {
   }
 
   /// **Groups Exercises by Selected Sort Option**
-  Map<String, List<QueryDocumentSnapshot<Object?>>> groupByField(
-      List<QueryDocumentSnapshot<Object?>> exercises, String field) {
-
+  Map<String, List<QueryDocumentSnapshot<Object?>>>
+  groupByField(List<QueryDocumentSnapshot<Object?>> exercises, String field) {
     Map<String, List<QueryDocumentSnapshot<Object?>>> grouped = {};
 
     for (var exercise in exercises) {
       var data = exercise.data() as Map<String, dynamic>? ?? {};
 
-      String key = data[field]?.toString().trim() ?? "Uncategorized";  // More meaningful default
+      String key = data[field]?.toString().trim() ?? "Uncategorized"; // More meaningful default
 
       if (field == "name" && key.isNotEmpty) {
         key = key[0].toUpperCase(); // Sort Alphabetically
@@ -99,13 +113,19 @@ class _ExercisePageState extends State<ExercisePage> {
 
     if (user == null) {
       return Scaffold(
-        appBar: AppBar(title: Text("Exercises")),
+        appBar: AppBar(
+          automaticallyImplyLeading: false,
+          title: Text("Exercises"),
+        ),
         body: Center(child: Text("You need to log in to view your exercises.")),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text("Exercises")),
+      appBar: AppBar(
+        automaticallyImplyLeading: false, // Removes the back arrow
+        title: Text("Exercises"),
+      ),
       body: Column(
         children: [
           /// **Search Bar**
@@ -131,10 +151,12 @@ class _ExercisePageState extends State<ExercisePage> {
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: DropdownButtonFormField<String>(
               value: selectedSort,
-              items: sortOptions.map((sort) => DropdownMenuItem(
+              items: sortOptions
+                  .map((sort) => DropdownMenuItem(
                 value: sort,
                 child: Text(sort),
-              )).toList(),
+              ))
+                  .toList(),
               onChanged: (value) {
                 setState(() {
                   selectedSort = value!;
@@ -153,7 +175,8 @@ class _ExercisePageState extends State<ExercisePage> {
                   child: DropdownButtonFormField<String>(
                     value: selectedCategory,
                     items: [
-                      DropdownMenuItem(value: null, child: Text("All Categories")),
+                      DropdownMenuItem(
+                          value: null, child: Text("All Categories")),
                       ...categories.map((category) => DropdownMenuItem(
                         value: category,
                         child: Text(category),
@@ -172,22 +195,25 @@ class _ExercisePageState extends State<ExercisePage> {
                   child: DropdownButtonFormField<String>(
                     value: selectedBodyPart,
                     items: [
-                      DropdownMenuItem(value: null, child: Text("All Body Parts")),
+                      DropdownMenuItem(
+                          value: null, child: Text("All Body Parts")),
                       ...bodyPartHierarchy.entries.expand((entry) {
                         String parent = entry.key;
                         List<String> subcategories = entry.value;
                         return [
                           DropdownMenuItem(
                             value: parent,
-                            child: Text(parent, style: TextStyle(fontWeight: FontWeight.bold)),
+                            child: Text(parent,
+                                style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
-                          ...subcategories.map((subcategory) => DropdownMenuItem(
-                            value: subcategory,
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 16.0),
-                              child: Text("— $subcategory"),
-                            ),
-                          )),
+                          ...subcategories.map((subcategory) =>
+                              DropdownMenuItem(
+                                value: subcategory,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 16.0),
+                                  child: Text("— $subcategory"),
+                                ),
+                              )),
                         ];
                       }).toList(),
                     ],
@@ -223,30 +249,41 @@ class _ExercisePageState extends State<ExercisePage> {
                 }
 
                 Map<String, List<QueryDocumentSnapshot<Object?>>> groupedExercises =
-                groupByField(exercises, selectedSort == "Alphabetical" ? "name" :
-                selectedSort == "Body Part" ? "bodyPart" : "category");
+                groupByField(
+                    exercises,
+                    selectedSort == "Alphabetical"
+                        ? "name"
+                        : selectedSort == "Body Part"
+                        ? "bodyPart"
+                        : "category");
 
                 return ListView.builder(
                   itemCount: groupedExercises.keys.length,
                   itemBuilder: (context, index) {
-                    String groupKey = groupedExercises.keys.elementAt(index);
+                    String groupKey =
+                    groupedExercises.keys.elementAt(index);
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Padding(
                           padding: const EdgeInsets.all(8.0),
-                          child: Text(groupKey, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          child: Text(groupKey,
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
                         ),
                         ...groupedExercises[groupKey]!.map((exercise) {
-                          var data = exercise.data() as Map<String, dynamic>;
+                          var data =
+                          exercise.data() as Map<String, dynamic>;
                           return ListTile(
                             title: Text(data['name']),
-                            subtitle: Text("${data['category']} - ${data['bodyPart']}"),
+                            subtitle: Text(
+                                "${data['category']} - ${data['bodyPart']}"),
                             onTap: () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => ExerciseDetailsPage(exercise: exercise),
+                                  builder: (context) => ExerciseDetailsPage(
+                                      exercise: exercise),
                                 ),
                               );
                             },

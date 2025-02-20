@@ -341,6 +341,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false, // Removes the back arrow
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [

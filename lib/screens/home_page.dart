@@ -68,6 +68,7 @@ class HomePageContent extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false, // Removes the back arrow
         title: Text('Welcome, ${user?.displayName ?? "User"}'),
         actions: [
           IconButton(
