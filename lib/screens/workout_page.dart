@@ -1,3 +1,4 @@
+import 'dart:math' as math; // <-- ADDED: For math.max
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -34,6 +35,9 @@ class _WorkoutPageState extends State<WorkoutPage> {
   // Bar chart data
   List<BarChartGroupData> weeklyBarGroups = [];
   List<DateTime> sortedWeekDates = [];
+
+  // <-- ADDED: track the maximum Y value for the chart
+  double maxYForChart = 0;
 
   @override
   void initState() {
@@ -196,9 +200,26 @@ class _WorkoutPageState extends State<WorkoutPage> {
       );
     }
 
+    // <-- ADDED: Calculate maxY based on the highest bar
+    double tempMaxY = 0;
+    for (var g in groups) {
+      if (g.barRods.isNotEmpty) {
+        tempMaxY = math.max(tempMaxY, g.barRods.first.toY);
+      }
+    }
+    // If above 10, round up to next multiple of 5
+    if (tempMaxY > 10) {
+      final remainder = tempMaxY % 5;
+      if (remainder != 0) {
+        tempMaxY = tempMaxY + (5 - remainder);
+      }
+    }
+
     setState(() {
       sortedWeekDates = allMondays;
       weeklyBarGroups = groups;
+      // If still below 10, we want at least 10 on the Y axis
+      maxYForChart = tempMaxY < 10 ? 10 : tempMaxY;
     });
   }
 
@@ -364,8 +385,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
       child: ElevatedButton(
         onPressed: () {
           Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => WorkoutSessionPage())
+            context,
+            MaterialPageRoute(builder: (context) => WorkoutSessionPage()),
           );
         },
         child: Text('Start a Workout', style: TextStyle(fontSize: 18)),
@@ -449,6 +470,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
           height: 200,
           child: BarChart(
             BarChartData(
+              // Use our computed maxYForChart
+              maxY: maxYForChart,
               minY: 0,
               barGroups: weeklyBarGroups,
               borderData: FlBorderData(
@@ -463,7 +486,27 @@ class _WorkoutPageState extends State<WorkoutPage> {
               gridData: FlGridData(show: false),
               titlesData: FlTitlesData(
                 leftTitles: AxisTitles(
-                  sideTitles: SideTitles(showTitles: true, interval: 1),
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 30,
+                    getTitlesWidget: (double value, TitleMeta meta) {
+                      // Only show labels for integer values
+                      if (value % 1 != 0) return Container();
+
+                      final int intVal = value.toInt();
+
+                      // Show all integers from 0 to 10
+                      if (intVal >= 0 && intVal <= 10) {
+                        return Text('$intVal');
+                      }
+                      // Beyond 10, show multiples of 5
+                      else if (intVal > 10 && intVal % 5 == 0) {
+                        return Text('$intVal');
+                      }
+                      // Hide everything else
+                      return Container();
+                    },
+                  ),
                 ),
                 rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -473,7 +516,9 @@ class _WorkoutPageState extends State<WorkoutPage> {
                     reservedSize: 32,
                     getTitlesWidget: (double value, TitleMeta meta) {
                       final index = value.toInt();
-                      if (index < 0 || index >= sortedWeekDates.length) return SizedBox.shrink();
+                      if (index < 0 || index >= sortedWeekDates.length) {
+                        return SizedBox.shrink();
+                      }
                       final date = sortedWeekDates[index];
                       final label = DateFormat("M/d").format(date);
                       return Padding(
