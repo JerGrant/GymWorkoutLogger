@@ -44,9 +44,7 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
   }
 
   Stream<QuerySnapshot> getWorkouts() {
-    Query query = _firestore
-        .collection('workouts')
-        .where('userId', isEqualTo: user?.uid);
+    Query query = _firestore.collection('workouts').where('userId', isEqualTo: user?.uid);
 
     // If user has selected a date range, apply it.
     if (startDate != null && endDate != null) {
@@ -181,6 +179,15 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
                     // Read the 'favorited' field
                     final isFavorited = workout['favorited'] == true;
 
+                    // Safely handle the timestamp conversion
+                    final ts = workout['timestamp'];
+                    String subtitleText;
+                    if (ts is Timestamp) {
+                      subtitleText = DateFormat.yMMMd().format(ts.toDate());
+                    } else {
+                      subtitleText = "No date available";
+                    }
+
                     return Card(
                       margin: EdgeInsets.all(8.0),
                       shape: RoundedRectangleBorder(
@@ -191,12 +198,7 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
                           workout['name'] ?? 'Unnamed Workout',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        subtitle: Text(
-                          DateFormat.yMMMd().format(
-                            (workout['timestamp'] as Timestamp).toDate(),
-                          ),
-                        ),
-                        // Icons for fitness_center and star
+                        subtitle: Text(subtitleText),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [

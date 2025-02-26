@@ -57,7 +57,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
             );
             nodes['reps'] = FocusNode();
             nodes['reps']!.addListener(() {
-              // If the user leaves the reps field, update the stored value
               if (!nodes['reps']!.hasFocus) {
                 _verifyAndUpdateReps(
                   _selectedExercises.indexOf(exercise),
@@ -77,7 +76,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
             );
             nodes['weight'] = FocusNode();
             nodes['weight']!.addListener(() {
-              // If the user leaves the weight field, update the stored value
               if (!nodes['weight']!.hasFocus) {
                 _verifyAndUpdateWeight(
                   _selectedExercises.indexOf(exercise),
@@ -97,7 +95,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     _workoutNameController.text = _workoutName;
     _workoutDescriptionController.text = _workoutDescription;
 
-    // Keep local state updated as user types in workout name/description
     _workoutNameController.addListener(() {
       setState(() {
         _workoutName = _workoutNameController.text;
@@ -109,22 +106,33 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       });
     });
 
-    // Create the workout doc in Firestore & start the timer
+    // Create the workout document in Firestore and start the timer
     _startWorkout();
   }
 
   Future<void> _startWorkout() async {
     if (user == null) return;
+
+    // Example of cleaning out any ephemeral keys again
+    List<Map<String, dynamic>> cleanedExercises = _selectedExercises.map((exercise) {
+      final copy = Map<String, dynamic>.from(exercise);
+      copy.remove('controllers');
+      copy.remove('focusNodes');
+      return copy;
+    }).toList();
+
     _workoutRef = await _firestore.collection('workouts').add({
       'userId': user!.uid,
       'timestamp': FieldValue.serverTimestamp(),
       'duration': 0,
       'name': _workoutName,
       'description': _workoutDescription,
-      'exercises': _selectedExercises,
+      'exercises': cleanedExercises,
     });
     _startTimer();
+    print("Created brand-new doc: ${_workoutRef!.id}");
   }
+
 
   void _startTimer() {
     _timer?.cancel();
@@ -133,18 +141,20 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         setState(() {
           _duration++;
         });
+        print("Timer tick: $_duration seconds");
       } else {
         _timer?.cancel();
       }
     });
   }
 
-  /// Force-read all text controllers before saving so we don't lose unsaved input
+
   Future<void> _finishWorkout() async {
     // 1) Stop the timer
     _timer?.cancel();
+    print("Finishing workout with duration: $_duration");
 
-    // 2) Final pass: read from each controller so sets array is updated
+    // 2) Final pass: update values from all text controllers so that the sets array is updated
     for (int i = 0; i < _selectedExercises.length; i++) {
       for (int j = 0; j < (_selectedExercises[i]['sets']?.length ?? 0); j++) {
         var repsCtrl = _selectedExercises[i]['controllers'][j]['reps'];
@@ -161,27 +171,35 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       }
     }
 
-    // 3) Clean up _selectedExercises by removing non-serializable keys
-    List<Map<String, dynamic>> cleanedExercises =
-    _selectedExercises.map((exercise) {
+    // 3) Clean up _selectedExercises by removing non-serializable keys (controllers and focusNodes)
+    List<Map<String, dynamic>> cleanedExercises = _selectedExercises.map((exercise) {
       var cleaned = Map<String, dynamic>.from(exercise);
       cleaned.remove("controllers");
       cleaned.remove("focusNodes");
       return cleaned;
     }).toList();
 
-    // 4) Update Firestore with final data
-    //    Storing total seconds directly, so short workouts won't show up as 0.
-    await _workoutRef?.update({
-      'duration': _duration, // total seconds
-      'name': _workoutName,
-      'description': _workoutDescription,
-      'exercises': cleanedExercises,
-    });
+    // 4) Update Firestore with the final data
+    try {
+      if (_workoutRef != null) {
+        await _workoutRef!.update({
+          'duration': _duration,
+          'name': _workoutName,
+          'description': _workoutDescription,
+          'exercises': cleanedExercises,
+        });
+        print("Workout document updated successfully.");
+      } else {
+        print("Workout document reference is null.");
+      }
+    } catch (e) {
+      print("Error updating workout document: $e");
+    }
 
-    // 5) Pop back to previous screen
+    // 5) Navigate back to the previous screen
     Navigator.pop(context);
   }
+
 
   Future<void> _cancelWorkout() async {
     _timer?.cancel();
@@ -189,7 +207,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     Navigator.pop(context);
   }
 
-  /// Converts older fields to strings & ensures 'sets' is a list
   Map<String, dynamic> convertExerciseFields(Map<String, dynamic> exercise) {
     List<String> fields = ['name', 'category', 'bodyPart', 'subcategory'];
     Map<String, dynamic> newExercise = Map.from(exercise);
@@ -238,7 +255,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
   void _removeExercise(int index) {
     setState(() {
-      // Dispose controllers/focus nodes
       for (var map in _selectedExercises[index]['controllers']) {
         map.values.forEach((c) => c.dispose());
       }
@@ -275,6 +291,9 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     final category = exercise['category']?.toString() ?? "";
     final newSet = _getDefaultSet(category);
 
+    // Capture the new set index now
+    final newSetIndex = (exercise['sets']?.length ?? 0);
+
     Map<String, TextEditingController> newControllers = {};
     Map<String, FocusNode> newFocusNodes = {};
 
@@ -285,7 +304,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         if (!newFocusNodes['reps']!.hasFocus) {
           _verifyAndUpdateReps(
             exerciseIndex,
-            exercise['sets'].length,
+            newSetIndex, // Use captured index
             newControllers['reps']!.text,
           );
         }
@@ -298,7 +317,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         if (!newFocusNodes['weight']!.hasFocus) {
           _verifyAndUpdateWeight(
             exerciseIndex,
-            exercise['sets'].length,
+            newSetIndex, // Use captured index
             newControllers['weight']!.text,
           );
         }
@@ -313,7 +332,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       exercise['focusNodes'].add(newFocusNodes);
     });
 
-    // Scroll to bottom to show the newly added set
     Future.delayed(const Duration(milliseconds: 200), () {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
@@ -323,21 +341,28 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
   }
 
+
   void _removeSet(int exerciseIndex, int setIndex) {
+    final exercise = _selectedExercises[exerciseIndex];
+
+    // Dispose controllers
+    exercise['controllers'][setIndex].values.forEach((c) => c.dispose());
+
+    // Dispose focus nodes
+    exercise['focusNodes'][setIndex].values.forEach((n) {
+      // Optionally remove any listeners here if you kept references
+      // e.g. n.removeListener(myListener);
+      n.dispose();
+    });
+
+    // Remove them from the arrays
     setState(() {
-      Map<String, TextEditingController> ctrls =
-      _selectedExercises[exerciseIndex]['controllers'][setIndex];
-      ctrls.values.forEach((c) => c.dispose());
-
-      Map<String, FocusNode> nodes =
-      _selectedExercises[exerciseIndex]['focusNodes'][setIndex];
-      nodes.values.forEach((n) => n.dispose());
-
-      _selectedExercises[exerciseIndex]['sets'].removeAt(setIndex);
-      _selectedExercises[exerciseIndex]['controllers'].removeAt(setIndex);
-      _selectedExercises[exerciseIndex]['focusNodes'].removeAt(setIndex);
+      exercise['sets'].removeAt(setIndex);
+      exercise['controllers'].removeAt(setIndex);
+      exercise['focusNodes'].removeAt(setIndex);
     });
   }
+
 
   void _updateReps(int exerciseIndex, int setIndex, int reps) {
     setState(() {
@@ -373,7 +398,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     return "${minutes}m ${remainingSeconds}s";
   }
 
-  /// Fetch exercise history if needed
   Future<Map<String, dynamic>> _fetchExerciseHistory(String exerciseId) async {
     List<Map<String, dynamic>> allEntries = [];
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -558,20 +582,14 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         false;
   }
 
-  Future<void> _verifyAndUpdateReps(
-      int exerciseIndex,
-      int setIndex,
-      String valueStr,
-      ) async {
+  Future<void> _verifyAndUpdateReps(int exerciseIndex, int setIndex, String valueStr) async {
     int reps = int.tryParse(valueStr) ?? 0;
     if (reps > 100) {
-      bool confirmed = await _showVerificationDialog(
-          "You entered over 100 reps. Are you sure?");
+      bool confirmed = await _showVerificationDialog("You entered over 100 reps. Are you sure?");
       if (!confirmed) {
         setState(() {
           _selectedExercises[exerciseIndex]['sets'][setIndex]['reps'] = null;
-          _selectedExercises[exerciseIndex]['controllers'][setIndex]['reps']
-              ?.text = "";
+          _selectedExercises[exerciseIndex]['controllers'][setIndex]['reps']?.text = "";
         });
         return;
       }
@@ -579,20 +597,14 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     _updateReps(exerciseIndex, setIndex, reps);
   }
 
-  Future<void> _verifyAndUpdateWeight(
-      int exerciseIndex,
-      int setIndex,
-      String valueStr,
-      ) async {
+  Future<void> _verifyAndUpdateWeight(int exerciseIndex, int setIndex, String valueStr) async {
     double weight = double.tryParse(valueStr) ?? 0.0;
     if (weight > 500) {
-      bool confirmed = await _showVerificationDialog(
-          "You entered over 500 lbs. Are you sure?");
+      bool confirmed = await _showVerificationDialog("You entered over 500 lbs. Are you sure?");
       if (!confirmed) {
         setState(() {
           _selectedExercises[exerciseIndex]['sets'][setIndex]['weight'] = null;
-          _selectedExercises[exerciseIndex]['controllers'][setIndex]['weight']
-              ?.text = "";
+          _selectedExercises[exerciseIndex]['controllers'][setIndex]['weight']?.text = "";
         });
         return;
       }
@@ -673,8 +685,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.info_outline,
-                                    color: Colors.blue),
+                                icon: const Icon(Icons.info_outline, color: Colors.blue),
                                 onPressed: () {
                                   _showExerciseHistoryForExercise(exercise);
                                 },
@@ -689,7 +700,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                               ),
                             ],
                           ),
-                          // Sets
+                          // Sets list
                           Column(
                             children: List.generate(
                               exercise['sets'].length,
@@ -701,23 +712,19 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                 exercise['focusNodes'][setIndex];
 
                                 return Row(
-                                  mainAxisAlignment:
-                                  MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text("Set ${setIndex + 1}"),
                                     Expanded(
                                       child: Row(
-                                        mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
+                                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                         children: [
                                           if (set.containsKey('reps'))
                                             SizedBox(
                                               width: 50,
                                               child: TextField(
-                                                decoration: const InputDecoration(
-                                                    labelText: "Reps"),
-                                                keyboardType:
-                                                TextInputType.number,
+                                                decoration: const InputDecoration(labelText: "Reps"),
+                                                keyboardType: TextInputType.number,
                                                 controller: controllers['reps'],
                                                 focusNode: focusNodes['reps'],
                                                 onSubmitted: (value) {
@@ -733,16 +740,10 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                             SizedBox(
                                               width: 70,
                                               child: TextField(
-                                                decoration: const InputDecoration(
-                                                    labelText: "Weight (lbs)"),
-                                                keyboardType:
-                                                const TextInputType
-                                                    .numberWithOptions(
-                                                    decimal: true),
-                                                controller:
-                                                controllers['weight'],
-                                                focusNode:
-                                                focusNodes['weight'],
+                                                decoration: const InputDecoration(labelText: "Weight (lbs)"),
+                                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                controller: controllers['weight'],
+                                                focusNode: focusNodes['weight'],
                                                 onSubmitted: (value) {
                                                   _verifyAndUpdateWeight(
                                                     exerciseIndex,
@@ -756,12 +757,10 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                             SizedBox(
                                               width: 70,
                                               child: TextField(
-                                                decoration:
-                                                const InputDecoration(
+                                                decoration: const InputDecoration(
                                                   labelText: "Duration (sec)",
                                                 ),
-                                                keyboardType:
-                                                TextInputType.number,
+                                                keyboardType: TextInputType.number,
                                                 onChanged: (value) {
                                                   _updateDuration(
                                                     exerciseIndex,
@@ -775,19 +774,13 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                             SizedBox(
                                               width: 70,
                                               child: TextField(
-                                                decoration:
-                                                const InputDecoration(
-                                                    labelText: "Miles"),
-                                                keyboardType:
-                                                const TextInputType
-                                                    .numberWithOptions(
-                                                    decimal: true),
+                                                decoration: const InputDecoration(labelText: "Miles"),
+                                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                                 onChanged: (value) {
                                                   _updateMiles(
                                                     exerciseIndex,
                                                     setIndex,
-                                                    double.tryParse(value) ??
-                                                        0.0,
+                                                    double.tryParse(value) ?? 0.0,
                                                   );
                                                 },
                                               ),
@@ -795,20 +788,15 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                         ],
                                       ),
                                     ),
-                                    // Add/Remove set
                                     Row(
                                       children: [
                                         IconButton(
-                                          icon: const Icon(Icons.add,
-                                              color: Colors.green),
-                                          onPressed: () =>
-                                              _addSet(exerciseIndex),
+                                          icon: const Icon(Icons.add, color: Colors.green),
+                                          onPressed: () => _addSet(exerciseIndex),
                                         ),
                                         IconButton(
-                                          icon: const Icon(Icons.remove,
-                                              color: Colors.red),
-                                          onPressed: () =>
-                                              _removeSet(exerciseIndex, setIndex),
+                                          icon: const Icon(Icons.remove, color: Colors.red),
+                                          onPressed: () => _removeSet(exerciseIndex, setIndex),
                                         ),
                                       ],
                                     ),
@@ -824,7 +812,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 },
               ),
             ),
-            // Finish / Cancel buttons
+            // Finish and Cancel buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -834,8 +822,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 ),
                 ElevatedButton(
                   onPressed: _cancelWorkout,
-                  style:
-                  ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                   child: const Text('Cancel Workout'),
                 ),
               ],
@@ -852,7 +839,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     _workoutNameController.dispose();
     _workoutDescriptionController.dispose();
 
-    // Dispose all controllers/focusNodes for each exercise
     for (var exercise in _selectedExercises) {
       if (exercise['controllers'] != null) {
         for (var ctrlMap in exercise['controllers']) {

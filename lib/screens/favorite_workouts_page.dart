@@ -4,7 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import 'workout_history_detail_page.dart';
+// IMPORTANT: Changed import to navigate to the workout session page.
+import 'workout_session_page.dart';
 
 class FavoriteWorkoutsPage extends StatefulWidget {
   @override
@@ -108,12 +109,26 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
                   ],
                 ),
                 onTap: () {
+                  // Grab the old workout data as a template
+                  final docData = doc.data() as Map<String, dynamic>;
+
+                  // Remove fields that belong to the old doc
+                  docData.remove('timestamp');
+                  docData.remove('duration');
+                  docData.remove('favorited');
+                  // If there's an 'id' field or doc ID, remove it too
+                  docData.remove('id');
+
+                  // Also remove any leftover controllers/focusNodes so you don't reuse them
+                  docData.remove('controllers');
+                  docData.remove('focusNodes');
+
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => WorkoutHistoryDetailPage(
-                        workout: workout,
-                        workoutId: workoutId,
+                      builder: (context) => WorkoutSessionPage(
+                        // This is just a template now, with no old doc ID
+                        preloadedWorkout: docData,
                       ),
                     ),
                   );
@@ -134,7 +149,7 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
       ),
       body: Column(
         children: [
-          // Optional search field for favorite workouts
+          // Search field for favorite workouts
           Padding(
             padding: const EdgeInsets.all(10.0),
             child: TextField(
