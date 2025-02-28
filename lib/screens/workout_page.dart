@@ -64,44 +64,45 @@ class _WorkoutPageState extends State<WorkoutPage> {
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
 
-    // Fetch all workout docs
     QuerySnapshot snapshot = await _firestore
         .collection('workouts')
         .where('userId', isEqualTo: user!.uid)
         .orderBy('timestamp', descending: false)
         .get();
 
-    // Basic counts
     int total = snapshot.docs.length;
     int thisMonth = 0;
-    int durationSum = 0;
 
-    // We'll store each doc's exact timestamp (session-based, no dedup).
+    // We'll accumulate durations in MINUTES now
+    int durationSumInMinutes = 0;
+
     List<DateTime> sessions = [];
 
     for (var doc in snapshot.docs) {
       final Timestamp ts = doc['timestamp'];
       final DateTime dt = ts.toDate();
 
-      // Count workouts this month
+      // 1) Count if in this month
       if (dt.isAfter(startOfMonth)) {
         thisMonth++;
       }
 
-      // Sum durations
-      durationSum += parseDuration(doc['duration']);
+      // 2) Convert doc['duration'] from SECONDS to MINUTES
+      final int secs = parseDuration(doc['duration']); // parse as int
+      final int minutes = secs ~/ 60;                  // integer division
+      durationSumInMinutes += minutes;
 
-      // Store exact session time
+      // 3) Store session time for streak logic
       sessions.add(dt);
     }
 
-    // Sort sessions by ascending time
+    // Sort sessions by ascending time for streak calculations
     sessions.sort();
 
-    // Average
-    double average = (total > 0) ? (durationSum / total) : 0;
+    // Calculate average in minutes
+    double average = (total > 0) ? (durationSumInMinutes / total) : 0.0;
 
-    // Allowed rest days
+    // Allowed rest days (from your existing code)
     int allowedMiss = 7 - expectedWorkoutDays;
 
     // Streaks
@@ -111,8 +112,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
     setState(() {
       totalWorkouts = total;
       workoutsThisMonth = thisMonth;
-      totalDuration = durationSum;
-      avgDuration = average;
+      totalDuration = durationSumInMinutes; // total duration in minutes
+      avgDuration = average;               // average in minutes (double)
       currentStreak = curStreak;
       longestStreak = maxStreak;
     });
