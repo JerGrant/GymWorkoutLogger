@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:gymworkoutlogger/screens/settings_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
@@ -422,6 +423,15 @@ class _ProfilePageState extends State<ProfilePage> {
         automaticallyImplyLeading: false, // Removes the back arrow
         title: Text("Profile"),
         actions: [
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SettingsPage()),
+                );
+              },
+            ),
           IconButton(
             icon: Icon(isEditing ? Icons.check : Icons.edit),
             onPressed: () async {
