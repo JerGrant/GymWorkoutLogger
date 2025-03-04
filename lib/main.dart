@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'screens/sign_in_page.dart';
 import 'screens/home_page.dart';
 
@@ -22,13 +23,21 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Gym Workout Logger',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        scaffoldBackgroundColor: Color(0xFF1E1E1E), // Dark Gray Background
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark, // Ensures a dark theme
+        ),
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Colors.white),
+          bodyMedium: TextStyle(color: Colors.white),
+        ),
         useMaterial3: true,
       ),
       // Initial route points to a splash screen
       initialRoute: '/splash',
       routes: {
-        '/splash': (context) => SplashScreen(), // Splash Screen
+        '/splash': (context) => SplashScreen(), // Animated Splash Screen
         '/': (context) => SignInPage(),
         '/home': (context) => HomePage(),
       },
@@ -56,15 +65,16 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.deepPurple, // Background color
+      backgroundColor: Color(0xFF000015), // Very Dark Blue Background
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Load the splash image (logo)
-            Image.asset(
-              'lib/assets/splash_icon.jpg', // Path to the splash image
-              height: 150, // Adjust size as needed
+            // Lottie Animation
+            Lottie.asset(
+              'lib/assets/BlueDumbbell.json', // Ensure this file exists
+              width: 200,
+              height: 200,
             ),
             SizedBox(height: 20), // Spacing
             Text(
