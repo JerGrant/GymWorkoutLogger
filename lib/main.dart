@@ -32,6 +32,8 @@ class MyApp extends StatelessWidget {
           bodyLarge: TextStyle(color: Colors.white),
           bodyMedium: TextStyle(color: Colors.white),
         ),
+        splashFactory: NoSplash.splashFactory, // Disables white ripple effect
+        highlightColor: Colors.black45, // Removes white highlight on tap
         useMaterial3: true,
       ),
       // Initial route points to a splash screen
