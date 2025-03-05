@@ -31,8 +31,15 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFF000015), // Ensure middle matches top & bottom
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Color(0xFF000015), // Matches AppBar and body
+        selectedItemColor: Color(0xFF007AFF), // iOS blue for selected item
+        unselectedItemColor: Colors.blue.shade200, // Lighter blue for unselected
+        type: BottomNavigationBarType.fixed, // Prevents shifting effect
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
@@ -51,10 +58,6 @@ class _HomePageState extends State<HomePage> {
             label: 'Profile',
           ),
         ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue, // Dark blue for selected
-        unselectedItemColor: Colors.blue.shade200, // Lighter blue for unselected
-        onTap: _onItemTapped,
       ),
     );
   }
@@ -67,12 +70,17 @@ class HomePageContent extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
+      backgroundColor: Color(0xFF000015), // Matches dark theme
       appBar: AppBar(
         automaticallyImplyLeading: false, // Removes the back arrow
-        title: Text('Welcome, ${user?.displayName ?? "User"}'),
+        backgroundColor: Color(0xFF000015), // Matches dark theme
+        title: Text(
+          'Welcome, ${user?.displayName ?? "User"}',
+          style: TextStyle(color: Colors.white),
+        ),
         actions: [
           IconButton(
-            icon: Icon(Icons.logout),
+            icon: Icon(Icons.logout, color: Colors.red), // Logout button in red
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
               Navigator.pushReplacementNamed(context, '/');
@@ -81,7 +89,10 @@ class HomePageContent extends StatelessWidget {
         ],
       ),
       body: Center(
-        child: Text('You are signed in!'),
+        child: Text(
+          'You are signed in!',
+          style: TextStyle(color: Colors.white),
+        ),
       ),
     );
   }
