@@ -1,4 +1,3 @@
-// Updating sign_in_page.dart to include missing _promptUploadPicture method
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -65,7 +64,7 @@ class _SignInPageState extends State<SignInPage> {
         return Wrap(
           children: [
             ListTile(
-              leading: Icon(Icons.camera_alt),
+              leading: Icon(Icons.camera_alt, color: Colors.deepPurple),
               title: Text("Take a Picture"),
               onTap: () {
                 Navigator.pop(context);
@@ -73,7 +72,7 @@ class _SignInPageState extends State<SignInPage> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.photo_library),
+              leading: Icon(Icons.photo_library, color: Colors.deepPurple),
               title: Text("Choose from Gallery"),
               onTap: () {
                 Navigator.pop(context);
@@ -111,38 +110,65 @@ class _SignInPageState extends State<SignInPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Sign In with Google',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 20),
-              if (_errorMessage != null)
+      body: Container(
+        color: Color(0xFF000015), // Forces background color to match splash screen
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Blue Dumbbell Image
+                Image.asset(
+                  'lib/assets/BlueDumbbell.png', // Ensure this file exists in your assets
+                  height: 120, // Adjust size as needed
+                ),
+                SizedBox(height: 20),
+
+                // Welcome Text
                 Text(
-                  _errorMessage!,
-                  style: TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
+                  'Welcome Back to [APP NAME]!',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white, // Keep text white for contrast
+                  ),
                 ),
-              SizedBox(height: 10),
-              _isLoading
-                  ? CircularProgressIndicator()
-                  : ElevatedButton(
-                onPressed: _signInWithGoogle,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.login),
-                    SizedBox(width: 10),
-                    Text('Sign In with Google'),
-                  ],
+                SizedBox(height: 20),
+
+                // Error Message (If any)
+                if (_errorMessage != null)
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Text(
+                      _errorMessage!,
+                      style: TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+
+                SizedBox(height: 10),
+
+                // Original Google Sign-In Button
+                _isLoading
+                    ? CircularProgressIndicator(color: Colors.white)
+                    : ElevatedButton(
+                  onPressed: _signInWithGoogle,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.login, color: Colors.white),
+                      SizedBox(width: 10),
+                      Text('Sign In with Google'),
+                    ],
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple, // Button color
+                    foregroundColor: Colors.white, // Text/Icon color
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
