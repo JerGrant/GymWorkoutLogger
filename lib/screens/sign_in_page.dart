@@ -111,7 +111,7 @@ class _SignInPageState extends State<SignInPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        color: Color(0xFF000015), // Forces background color to match splash screen
+        color: Color(0xFF000015), // Matches splash screen background
         child: Center(
           child: Padding(
             padding: EdgeInsets.all(16.0),
@@ -149,7 +149,7 @@ class _SignInPageState extends State<SignInPage> {
 
                 SizedBox(height: 10),
 
-                // Original Google Sign-In Button
+                // Original Google Sign-In Button (Now with Blue Color #007AFF)
                 _isLoading
                     ? CircularProgressIndicator(color: Colors.white)
                     : ElevatedButton(
@@ -163,8 +163,12 @@ class _SignInPageState extends State<SignInPage> {
                     ],
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple, // Button color
+                    backgroundColor: Color(0xFF007AFF), // Updated Button Color
                     foregroundColor: Colors.white, // Text/Icon color
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30), // Rounded button
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   ),
                 ),
               ],
