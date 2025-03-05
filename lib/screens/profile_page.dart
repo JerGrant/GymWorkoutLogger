@@ -419,12 +419,14 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFF000015), // Set background color
       appBar: AppBar(
+        backgroundColor: Color(0xFF000015), // Set app bar color to match
         automaticallyImplyLeading: false, // Removes the back arrow
-        title: Text("Profile"),
+        title: Text("Profile", style: TextStyle(color: Colors.white)),
         actions: [
-            IconButton(
-              icon: const Icon(Icons.settings),
+          IconButton(
+            icon: Icon(Icons.settings, color: Color(0xFF007AFF)), // Change settings icon to blue
               onPressed: () {
                 Navigator.push(
                   context,
@@ -433,7 +435,7 @@ class _ProfilePageState extends State<ProfilePage> {
               },
             ),
           IconButton(
-            icon: Icon(isEditing ? Icons.check : Icons.edit),
+            icon: Icon(isEditing ? Icons.check : Icons.edit, color: Color(0xFF007AFF)), // Change edit icon to blue
             onPressed: () async {
               if (isEditing) {
                 await _saveProfile();
@@ -510,8 +512,16 @@ class _ProfilePageState extends State<ProfilePage> {
             SizedBox(height: 10),
             ElevatedButton.icon(
               onPressed: _uploadProgressPicture,
-              icon: Icon(Icons.upload),
+              icon: Icon(Icons.upload, color: Colors.white),
               label: Text("Upload Progress Picture"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF007AFF), // Set button color to blue
+                foregroundColor: Colors.white, // Ensure text/icon is white
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8), // Slightly rounded edges
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
             ),
             SizedBox(height: 10),
             _buildProgressPicturesGallery(),
