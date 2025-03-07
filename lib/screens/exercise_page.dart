@@ -9,6 +9,14 @@ class ExercisePage extends StatefulWidget {
   _ExercisePageState createState() => _ExercisePageState();
 }
 
+class NoGlowScrollBehavior extends ScrollBehavior {
+  @override
+  Widget buildViewportChrome(BuildContext context, Widget child, AxisDirection axisDirection) {
+    return child;
+  }
+}
+
+
 class _ExercisePageState extends State<ExercisePage> {
   TextEditingController _searchController = TextEditingController();
   String searchQuery = "";
@@ -113,18 +121,26 @@ class _ExercisePageState extends State<ExercisePage> {
 
     if (user == null) {
       return Scaffold(
+        backgroundColor: Color(0xFF000015), // Set background color
         appBar: AppBar(
+          surfaceTintColor: Colors.transparent,
+          backgroundColor: Color(0xFF000015), // Ensures background stays fixed
+          elevation: 0, // Prevents shadow/lightening effect when scrolling
+          title: Text("Exercises", style: TextStyle(color: Colors.white)),
           automaticallyImplyLeading: false,
-          title: Text("Exercises"),
         ),
         body: Center(child: Text("You need to log in to view your exercises.")),
       );
     }
 
     return Scaffold(
+      backgroundColor: Color(0xFF000015), // Set background color
       appBar: AppBar(
-        automaticallyImplyLeading: false, // Removes the back arrow
-        title: Text("Exercises"),
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: Color(0xFF000015), // Ensures background stays fixed
+        elevation: 0, // Prevents shadow/lightening effect when scrolling
+        title: Text("Exercises", style: TextStyle(color: Colors.white)),
+        automaticallyImplyLeading: false,
       ),
       body: Column(
         children: [
@@ -135,9 +151,13 @@ class _ExercisePageState extends State<ExercisePage> {
               controller: _searchController,
               decoration: InputDecoration(
                 labelText: "Search Exercises",
-                prefixIcon: Icon(Icons.search),
+                labelStyle: TextStyle(color: Colors.white70), // Label text color
+                prefixIcon: Icon(Icons.search, color: Colors.white70), // Search icon color
+                filled: true,
+                fillColor: Color(0xFF000015), // Slightly lighter dark blue for contrast
                 border: OutlineInputBorder(),
               ),
+              style: TextStyle(color: Colors.white), // Ensure input text is visible
               onChanged: (value) {
                 setState(() {
                   searchQuery = value;
@@ -257,41 +277,49 @@ class _ExercisePageState extends State<ExercisePage> {
                         ? "bodyPart"
                         : "category");
 
-                return ListView.builder(
-                  itemCount: groupedExercises.keys.length,
-                  itemBuilder: (context, index) {
-                    String groupKey =
-                    groupedExercises.keys.elementAt(index);
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text(groupKey,
+                return ScrollConfiguration(
+                  behavior: NoGlowScrollBehavior(),
+                  child: ListView.builder(
+                    itemCount: groupedExercises.keys.length,
+                    itemBuilder: (context, index) {
+                      String groupKey = groupedExercises.keys.elementAt(index);
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Color(0xFF000015), // Force the fixed dark color
+                            ),
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              groupedExercises.keys.elementAt(index),
                               style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold)),
-                        ),
-                        ...groupedExercises[groupKey]!.map((exercise) {
-                          var data =
-                          exercise.data() as Map<String, dynamic>;
-                          return ListTile(
-                            title: Text(data['name']),
-                            subtitle: Text(
-                                "${data['category']} - ${data['bodyPart']}"),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => ExerciseDetailsPage(
-                                      exercise: exercise),
-                                ),
-                              );
-                            },
-                          );
-                        }).toList(),
-                      ],
-                    );
-                  },
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          ...groupedExercises[groupKey]!.map((exercise) {
+                            var data = exercise.data() as Map<String, dynamic>;
+                            return ListTile(
+                              title: Text(data['name']),
+                              subtitle: Text("${data['category']} - ${data['bodyPart']}"),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => ExerciseDetailsPage(exercise: exercise),
+                                  ),
+                                );
+                              },
+                            );
+                          }).toList(),
+                        ],
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -300,7 +328,8 @@ class _ExercisePageState extends State<ExercisePage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToCreateExercisePage,
-        child: Icon(Icons.add),
+        backgroundColor: Color(0xFF007AFF), // Maintain contrast
+        child: Icon(Icons.add, color: Colors.white), // Ensure icon is visible
       ),
     );
   }
