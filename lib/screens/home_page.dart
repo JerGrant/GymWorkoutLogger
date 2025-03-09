@@ -31,12 +31,15 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF000015), // Ensure middle matches top & bottom
+      // Use themed scaffold background
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Instead of Color(0xFF000015)
       body: _pages[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Color(0xFF000015), // Matches AppBar and body
-        selectedItemColor: Color(0xFF007AFF), // iOS blue for selected item
-        unselectedItemColor: Colors.blue.shade200, // Lighter blue for unselected
+        // Use themed background color
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Instead of Color(0xFF000015)
+        selectedItemColor: Theme.of(context).colorScheme.primary, // Instead of Color(0xFF007AFF)
+        // Using onSurface with opacity for unselected color
+        unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), // Instead of Colors.blue.shade200
         type: BottomNavigationBarType.fixed, // Prevents shifting effect
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -70,17 +73,21 @@ class HomePageContent extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      backgroundColor: Color(0xFF000015), // Matches dark theme
+      // Use themed scaffold background
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Instead of Color(0xFF000015)
       appBar: AppBar(
         automaticallyImplyLeading: false, // Removes the back arrow
-        backgroundColor: Color(0xFF000015), // Matches dark theme
+        // Use themed AppBar background
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor, // Instead of Color(0xFF000015)
         title: Text(
           'Welcome, ${user?.displayName ?? "User"}',
-          style: TextStyle(color: Colors.white),
+          // Use themed text style (if defined) or fallback to default
+          style: Theme.of(context).appBarTheme.titleTextStyle ?? TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.logout, color: Colors.red), // Logout button in red
+            // Use themed error color for logout if desired
+            icon: Icon(Icons.logout, color: Theme.of(context).colorScheme.error), // Instead of Colors.red
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
               Navigator.pushReplacementNamed(context, '/');
@@ -91,7 +98,7 @@ class HomePageContent extends StatelessWidget {
       body: Center(
         child: Text(
           'You are signed in!',
-          style: TextStyle(color: Colors.white),
+          style: Theme.of(context).textTheme.bodyMedium, // Instead of TextStyle(color: Colors.white)
         ),
       ),
     );

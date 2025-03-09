@@ -142,8 +142,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _uploadProfileImage() async {
     if (!isEditing) return; // Only allow changing image in edit mode
-    final pickedFile =
-    await ImagePicker().pickImage(source: ImageSource.gallery);
+    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
     File file = File(pickedFile.path);
     try {
@@ -162,31 +161,28 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _uploadProgressPicture() async {
-    final pickedFile =
-    await ImagePicker().pickImage(source: ImageSource.gallery);
+    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
     File file = File(pickedFile.path);
     // Prompt user for a caption or notes
     String? caption = await showDialog<String>(
       context: context,
       builder: (context) {
-        final TextEditingController _captionController =
-        TextEditingController();
+        final TextEditingController _captionController = TextEditingController();
         return AlertDialog(
-          title: Text("Enter Caption/Notes"),
+          title: const Text("Enter Caption/Notes"),
           content: TextField(
             controller: _captionController,
-            decoration: InputDecoration(hintText: "Caption or notes"),
+            decoration: const InputDecoration(hintText: "Caption or notes"),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(), // Cancel => null
-              child: Text("Cancel"),
+              child: const Text("Cancel"),
             ),
             ElevatedButton(
-              onPressed: () =>
-                  Navigator.of(context).pop(_captionController.text),
-              child: Text("Save"),
+              onPressed: () => Navigator.of(context).pop(_captionController.text),
+              child: const Text("Save"),
             ),
           ],
         );
@@ -208,12 +204,12 @@ class _ProfilePageState extends State<ProfilePage> {
         'timestamp': FieldValue.serverTimestamp(),
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Progress picture uploaded!")),
+        const SnackBar(content: Text("Progress picture uploaded!")),
       );
     } catch (e) {
       print("Error uploading progress picture: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error uploading progress picture.")),
+        const SnackBar(content: Text("Error uploading progress picture.")),
       );
     }
   }
@@ -237,7 +233,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (mounted) {
         setState(() => isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text("Profile updated successfully!"),
             duration: Duration(seconds: 2),
             backgroundColor: Colors.green,
@@ -249,7 +245,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (mounted) {
         setState(() => isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text("Error saving profile. Please try again."),
             backgroundColor: Colors.red,
           ),
@@ -269,18 +265,21 @@ class _ProfilePageState extends State<ProfilePage> {
           .orderBy('timestamp', descending: _isNewestFirst)
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.hasError)
-          return Text("Error loading progress pictures.");
-        if (snapshot.connectionState == ConnectionState.waiting)
-          return CircularProgressIndicator();
+        if (snapshot.hasError) {
+          return const Text("Error loading progress pictures.");
+        }
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const CircularProgressIndicator();
+        }
         final docs = snapshot.data!.docs;
-        if (docs.isEmpty)
-          return Text("No progress pictures uploaded yet.");
+        if (docs.isEmpty) {
+          return const Text("No progress pictures uploaded yet.");
+        }
         return GridView.builder(
           shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
+          physics: const NeverScrollableScrollPhysics(),
           itemCount: docs.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             crossAxisSpacing: 8,
             mainAxisSpacing: 8,
@@ -291,8 +290,7 @@ class _ProfilePageState extends State<ProfilePage> {
             String caption = data['caption'] ?? "";
             Timestamp? timestamp = data['timestamp'] as Timestamp?;
             String timeString = timestamp != null
-                ? DateTime.fromMillisecondsSinceEpoch(
-                timestamp.millisecondsSinceEpoch)
+                ? DateTime.fromMillisecondsSinceEpoch(timestamp.millisecondsSinceEpoch)
                 .toLocal()
                 .toString()
                 : "";
@@ -310,7 +308,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     padding: const EdgeInsets.all(4.0),
                     child: Text(
                       caption,
-                      style: TextStyle(fontSize: 12),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -319,7 +317,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     padding: const EdgeInsets.symmetric(horizontal: 4.0),
                     child: Text(
                       timeString,
-                      style: TextStyle(fontSize: 10, color: Colors.grey),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
                     ),
                   ),
                 ],
@@ -338,14 +336,26 @@ class _ProfilePageState extends State<ProfilePage> {
       children: [
         Text(
           "$firstName $lastName",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        SizedBox(height: 6),
-        Text("$city, $selectedState"),
-        SizedBox(height: 6),
-        Text("Height: $feet' $inches\""),
-        SizedBox(height: 6),
-        Text("Weight: $weight lbs"),
+        const SizedBox(height: 6),
+        Text(
+          "$city, $selectedState",
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          "Height: $feet' $inches\"",
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          "Weight: $weight lbs",
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
       ],
     );
   }
@@ -356,41 +366,40 @@ class _ProfilePageState extends State<ProfilePage> {
       children: [
         TextField(
           controller: _firstNameController,
-          decoration: InputDecoration(labelText: "First Name"),
+          decoration: const InputDecoration(labelText: "First Name"),
         ),
         TextField(
           controller: _lastNameController,
-          decoration: InputDecoration(labelText: "Last Name"),
+          decoration: const InputDecoration(labelText: "Last Name"),
         ),
         TextField(
           controller: _cityController,
-          decoration: InputDecoration(labelText: "City"),
+          decoration: const InputDecoration(labelText: "City"),
         ),
-        IgnorePointer(
-          ignoring: !isEditing,
-          child: DropdownButton<String>(
-            value: selectedState,
-            items: states.map((state) {
-              return DropdownMenuItem(value: state, child: Text(state));
-            }).toList(),
-            onChanged: (value) {
+        DropdownButton<String>(
+          value: selectedState,
+          items: states.map((state) {
+            return DropdownMenuItem(value: state, child: Text(state));
+          }).toList(),
+          onChanged: (value) {
+            if (isEditing) {
               setState(() => selectedState = value!);
-            },
-          ),
+            }
+          },
         ),
         TextField(
           controller: _feetController,
-          decoration: InputDecoration(labelText: "Feet"),
+          decoration: const InputDecoration(labelText: "Feet"),
           keyboardType: TextInputType.number,
         ),
         TextField(
           controller: _inchesController,
-          decoration: InputDecoration(labelText: "Inches"),
+          decoration: const InputDecoration(labelText: "Inches"),
           keyboardType: TextInputType.number,
         ),
         TextField(
           controller: _weightController,
-          decoration: InputDecoration(labelText: "Weight (lbs)"),
+          decoration: const InputDecoration(labelText: "Weight (lbs)"),
           keyboardType: TextInputType.number,
         ),
       ],
@@ -403,7 +412,7 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: EdgeInsets.all(10),
+        insetPadding: const EdgeInsets.all(10),
         child: GestureDetector(
           onTap: () => Navigator.of(context).pop(),
           child: InteractiveViewer(
@@ -419,23 +428,33 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF000015), // Set background color
+      // Use the theme’s scaffold background color
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Color(0xFF000015), // Set app bar color to match
-        automaticallyImplyLeading: false, // Removes the back arrow
-        title: Text("Profile", style: TextStyle(color: Colors.white)),
+        // Use the theme’s appBar background color
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        automaticallyImplyLeading: false,
+        title: Text(
+          "Profile",
+          style: Theme.of(context).appBarTheme.titleTextStyle,
+        ),
         actions: [
+          // Settings icon uses the theme’s accent color
           IconButton(
-            icon: Icon(Icons.settings, color: Color(0xFF007AFF)), // Change settings icon to blue
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SettingsPage()),
-                );
-              },
+            icon: Icon(Icons.settings, color: Theme.of(context).colorScheme.primary),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsPage()),
+              );
+            },
+          ),
+          // Edit icon toggles between check and edit, also uses accent color
+          IconButton(
+            icon: Icon(
+              isEditing ? Icons.check : Icons.edit,
+              color: Theme.of(context).colorScheme.primary,
             ),
-          IconButton(
-            icon: Icon(isEditing ? Icons.check : Icons.edit, color: Color(0xFF007AFF)), // Change edit icon to blue
             onPressed: () async {
               if (isEditing) {
                 await _saveProfile();
@@ -448,12 +467,12 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
       body: isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Profile image: tap to change in edit mode, or display full image otherwise.
+            // Profile image
             GestureDetector(
               onTap: () {
                 if (isEditing) {
@@ -469,34 +488,42 @@ class _ProfilePageState extends State<ProfilePage> {
                     : AssetImage(profileImage) as ImageProvider,
               ),
             ),
-            SizedBox(height: 10),
-            if (isEditing) Text("Tap to change profile image"),
-            SizedBox(height: 20),
+            const SizedBox(height: 10),
+            if (isEditing)
+              Text(
+                "Tap to change profile image",
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            const SizedBox(height: 20),
             isEditing ? _buildEditableFields() : _buildReadOnlyFields(),
-            SizedBox(height: 30),
-            Divider(),
+            const SizedBox(height: 30),
+            const Divider(),
             // Progress Pictures section
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   "Progress Pictures",
-                  style: TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Row(
                   children: [
-                    Text("Sort: "),
+                    Text("Sort: ", style: Theme.of(context).textTheme.bodyMedium),
                     DropdownButton<bool>(
                       value: _isNewestFirst,
                       items: [
                         DropdownMenuItem(
-                          child: Text("Newest to Oldest"),
                           value: true,
+                          child: Text("Newest to Oldest",
+                              style: Theme.of(context).textTheme.bodyMedium),
                         ),
                         DropdownMenuItem(
-                          child: Text("Oldest to Newest"),
                           value: false,
+                          child: Text("Oldest to Newest",
+                              style: Theme.of(context).textTheme.bodyMedium),
                         ),
                       ],
                       onChanged: (value) {
@@ -509,21 +536,21 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ],
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             ElevatedButton.icon(
               onPressed: _uploadProgressPicture,
-              icon: Icon(Icons.upload, color: Colors.white),
-              label: Text("Upload Progress Picture"),
+              icon: const Icon(Icons.upload),
+              label: const Text("Upload Progress Picture"),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF007AFF), // Set button color to blue
-                foregroundColor: Colors.white, // Ensure text/icon is white
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8), // Slightly rounded edges
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             _buildProgressPicturesGallery(),
           ],
         ),

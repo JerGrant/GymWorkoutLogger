@@ -539,18 +539,18 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
-      color: Color(0xFF1A1A2E),
+      color: Theme.of(context).cardColor, // Updated
       child: ListTile(
         leading: showTrophy ? const Icon(Icons.emoji_events, color: Colors.amber) : null,
         title: Text(
           "${date.toLocal().toString().split('.')[0]}",
-          style: TextStyle(color: Colors.white),
+          style: (Theme.of(context).textTheme.bodyMedium ?? TextStyle()).copyWith(color: Theme.of(context).textTheme.bodyMedium?.color),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Volume: ${volume.toStringAsFixed(1)}", style: TextStyle(color: Colors.white70)),
-            Text(setDetails, style: TextStyle(color: Colors.white70)),
+            Text("Volume: ${volume.toStringAsFixed(1)}", style: (Theme.of(context).textTheme.bodySmall ?? TextStyle()).copyWith(color: Theme.of(context).hintColor)),
+            Text(setDetails, style: (Theme.of(context).textTheme.bodySmall ?? TextStyle()).copyWith(color: Theme.of(context).hintColor)),
           ],
         ),
       ),
@@ -561,9 +561,9 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     return await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Color(0xFF000015),
-        title: const Text("Confirm Value", style: TextStyle(color: Colors.white)),
-        content: Text(message, style: TextStyle(color: Colors.white70)),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Updated from Color(0xFF000015)
+        title: Text("Confirm Value", style: (Theme.of(context).textTheme.bodyMedium ?? TextStyle()).copyWith(color: Theme.of(context).textTheme.bodyMedium?.color)),
+        content: Text(message, style: (Theme.of(context).textTheme.bodyMedium ?? TextStyle()).copyWith(color: Theme.of(context).hintColor)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -611,13 +611,13 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF000015),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Updated
       appBar: AppBar(
-        backgroundColor: Color(0xFF000015),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor, // Updated
         // Disable Material 3 tint and shadow
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        scrolledUnderElevation: 0,    // If on Flutter 3.7+, also disable scrolled elevation
+        scrolledUnderElevation: 0, // If on Flutter 3.7+, also disable scrolled elevation
         shadowColor: Colors.transparent,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -637,13 +637,13 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextField(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Workout Name',
               ),
               controller: _workoutNameController,
             ),
             TextField(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Description',
               ),
               controller: _workoutDescriptionController,

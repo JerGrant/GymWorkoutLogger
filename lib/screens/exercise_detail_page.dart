@@ -305,35 +305,37 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           // Basic info
           Text(
             "Name: $exerciseName",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            // Updated to use theme text style
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 8),
-          Text("Category: $exerciseCategory", style: TextStyle(color: Colors.white70)),
-          Text("Main Body Part: $exerciseMainBodyPart", style: TextStyle(color: Colors.white70)),
+          Text("Category: $exerciseCategory", style: Theme.of(context).textTheme.bodyMedium),
+          Text("Main Body Part: $exerciseMainBodyPart", style: Theme.of(context).textTheme.bodyMedium),
           if (exerciseSubBodyPart.isNotEmpty)
-            Text("Specific Muscle Group: $exerciseSubBodyPart", style: TextStyle(color: Colors.white70)),
+            Text("Specific Muscle Group: $exerciseSubBodyPart", style: Theme.of(context).textTheme.bodyMedium),
           if (exerciseDescription.isNotEmpty) ...[
             SizedBox(height: 8),
-            Text("Description: $exerciseDescription", style: TextStyle(color: Colors.white70)),
+            Text("Description: $exerciseDescription", style: Theme.of(context).textTheme.bodyMedium),
           ],
           if (exerciseNotes.isNotEmpty) ...[
             SizedBox(height: 8),
-            Text("Notes: $exerciseNotes", style: TextStyle(color: Colors.white70)),
+            Text("Notes: $exerciseNotes", style: Theme.of(context).textTheme.bodyMedium),
           ],
           SizedBox(height: 20),
 
           // Personal Best
-          Text("Personal Best", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+          Text("Personal Best", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.bold)),
           if (bestEntry == null)
-            Text("No data found.", style: TextStyle(color: Colors.white70))
+            Text("No data found.", style: Theme.of(context).textTheme.bodyMedium)
           else
             Card(
-              color: Color(0xFF1A1A2E),
+              // Updated to use theme card color
+              color: Theme.of(context).cardColor,
               child: ListTile(
                 leading: Icon(Icons.star, color: Colors.amber),
                 title: Text(
                   "Date: ${bestEntry['date'].toLocal().toString().split('.')[0]}",
-                  style: TextStyle(color: Colors.white),
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 subtitle: _buildEntrySubtitle(bestEntry),
               ),
@@ -342,9 +344,9 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           SizedBox(height: 20),
 
           // Recent History
-          Text("Recent History", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+          Text("Recent History", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.bold)),
           if (recent.isEmpty)
-            Text("No recent data found.", style: TextStyle(color: Colors.white70))
+            Text("No recent data found.", style: Theme.of(context).textTheme.bodyMedium)
           else
             ListView.builder(
               shrinkWrap: true,
@@ -353,12 +355,12 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
               itemBuilder: (context, index) {
                 var entry = recent[index];
                 return Card(
-                  color: Color(0xFF1A1A2E),
+                  color: Theme.of(context).cardColor,
                   margin: EdgeInsets.symmetric(vertical: 6),
                   child: ListTile(
                     title: Text(
                       "${entry['date'].toLocal().toString().split('.')[0]}",
-                      style: TextStyle(color: Colors.white),
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     subtitle: _buildEntrySubtitle(entry),
                   ),
@@ -386,8 +388,8 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Volume: ${volume.toStringAsFixed(1)}", style: TextStyle(color: Colors.white70)),
-        Text(setDetails, style: TextStyle(color: Colors.white70)),
+        Text("Volume: ${volume.toStringAsFixed(1)}", style: Theme.of(context).textTheme.bodySmall),
+        Text(setDetails, style: Theme.of(context).textTheme.bodySmall),
       ],
     );
   }
@@ -401,14 +403,16 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           // Exercise Name
           TextField(
             controller: _nameController,
-            style: TextStyle(color: Colors.white),
+            style: Theme.of(context).textTheme.bodyMedium,
             decoration: InputDecoration(
               labelText: "Exercise Name",
-              labelStyle: TextStyle(color: Colors.white70),
+              labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor),
               filled: true,
-              fillColor: Color(0xFF000015),
+              // Updated to use scaffold background color
+              fillColor: Theme.of(context).scaffoldBackgroundColor,
               border: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.white24),
+                // Updated border color
+                borderSide: BorderSide(color: Theme.of(context).dividerColor),
               ),
             ),
           ),
@@ -417,10 +421,11 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           // Category
           DropdownButtonFormField(
             value: selectedCategory,
-            dropdownColor: Color(0xFF000015),
-            style: TextStyle(color: Colors.white),
+            // Updated to use scaffold background color
+            dropdownColor: Theme.of(context).scaffoldBackgroundColor,
+            style: Theme.of(context).textTheme.bodyMedium,
             items: categories.map((category) {
-              return DropdownMenuItem(value: category, child: Text(category, style: TextStyle(color: Colors.white)));
+              return DropdownMenuItem(value: category, child: Text(category, style: Theme.of(context).textTheme.bodyMedium));
             }).toList(),
             onChanged: (value) {
               setState(() {
@@ -429,11 +434,11 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
             },
             decoration: InputDecoration(
               labelText: "Category",
-              labelStyle: TextStyle(color: Colors.white70),
+              labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor),
               filled: true,
-              fillColor: Color(0xFF000015),
+              fillColor: Theme.of(context).scaffoldBackgroundColor,
               border: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.white24),
+                borderSide: BorderSide(color: Theme.of(context).dividerColor),
               ),
             ),
           ),
@@ -444,12 +449,12 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
             value: bodyPartHierarchy.containsKey(selectedMainBodyPart)
                 ? selectedMainBodyPart
                 : null,
-            dropdownColor: Color(0xFF000015),
-            style: TextStyle(color: Colors.white),
+            dropdownColor: Theme.of(context).scaffoldBackgroundColor,
+            style: Theme.of(context).textTheme.bodyMedium,
             items: bodyPartHierarchy.keys.map((mainPart) {
               return DropdownMenuItem(
                 value: mainPart,
-                child: Text(mainPart, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                child: Text(mainPart, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
               );
             }).toList(),
             onChanged: (value) {
@@ -460,11 +465,11 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
             },
             decoration: InputDecoration(
               labelText: "Main Body Part",
-              labelStyle: TextStyle(color: Colors.white70),
+              labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor),
               filled: true,
-              fillColor: Color(0xFF000015),
+              fillColor: Theme.of(context).scaffoldBackgroundColor,
               border: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.white24),
+                borderSide: BorderSide(color: Theme.of(context).dividerColor),
               ),
             ),
           ),
@@ -476,12 +481,12 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
               value: bodyPartHierarchy[selectedMainBodyPart!]!.contains(selectedSubBodyPart)
                   ? selectedSubBodyPart
                   : null,
-              dropdownColor: Color(0xFF000015),
-              style: TextStyle(color: Colors.white),
+              dropdownColor: Theme.of(context).scaffoldBackgroundColor,
+              style: Theme.of(context).textTheme.bodyMedium,
               items: bodyPartHierarchy[selectedMainBodyPart!]!.map((subPart) {
                 return DropdownMenuItem(
                   value: subPart,
-                  child: Text(subPart, style: TextStyle(color: Colors.white)),
+                  child: Text(subPart, style: Theme.of(context).textTheme.bodyMedium),
                 );
               }).toList(),
               onChanged: (value) {
@@ -491,11 +496,11 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
               },
               decoration: InputDecoration(
                 labelText: "Specific Muscle Group",
-                labelStyle: TextStyle(color: Colors.white70),
+                labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor),
                 filled: true,
-                fillColor: Color(0xFF000015),
+                fillColor: Theme.of(context).scaffoldBackgroundColor,
                 border: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white24),
+                  borderSide: BorderSide(color: Theme.of(context).dividerColor),
                 ),
               ),
             ),
@@ -504,15 +509,15 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           // Description
           TextField(
             controller: _descriptionController,
-            style: TextStyle(color: Colors.white),
+            style: Theme.of(context).textTheme.bodyMedium,
             maxLines: 3,
             decoration: InputDecoration(
               labelText: "Description",
-              labelStyle: TextStyle(color: Colors.white70),
+              labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor),
               filled: true,
-              fillColor: Color(0xFF000015),
+              fillColor: Theme.of(context).scaffoldBackgroundColor,
               border: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.white24),
+                borderSide: BorderSide(color: Theme.of(context).dividerColor),
               ),
             ),
           ),
@@ -521,15 +526,15 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           // Notes
           TextField(
             controller: _notesController,
-            style: TextStyle(color: Colors.white),
+            style: Theme.of(context).textTheme.bodyMedium,
             maxLines: 3,
             decoration: InputDecoration(
               labelText: "Notes",
-              labelStyle: TextStyle(color: Colors.white70),
+              labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor),
               filled: true,
-              fillColor: Color(0xFF000015),
+              fillColor: Theme.of(context).scaffoldBackgroundColor,
               border: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.white24),
+                borderSide: BorderSide(color: Theme.of(context).dividerColor),
               ),
             ),
           ),
@@ -544,16 +549,16 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
       future: _fetchExerciseHistory(widget.exercise.id),
       builder: (context, snapshot) {
         return Scaffold(
-          backgroundColor: Color(0xFF000015),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Updated from hardcoded Color(0xFF000015)
           appBar: AppBar(
-            backgroundColor: Color(0xFF000015),
+            backgroundColor: Theme.of(context).appBarTheme.backgroundColor, // Updated
             surfaceTintColor: Colors.transparent,
-            iconTheme: IconThemeData(color: Colors.white),
-            title: Text("Exercise Details", style: TextStyle(color: Colors.white)),
+            iconTheme: Theme.of(context).appBarTheme.iconTheme, // Updated
+            title: Text("Exercise Details", style: Theme.of(context).appBarTheme.titleTextStyle), // Updated
             actions: [
               // Edit / Save icon
               IconButton(
-                icon: Icon(_isEditing ? Icons.check : Icons.edit, color: Color(0xFF007AFF)),
+                icon: Icon(_isEditing ? Icons.check : Icons.edit, color: Theme.of(context).colorScheme.primary), // Updated
                 onPressed: () {
                   if (_isEditing) {
                     // If user was editing, save changes
@@ -566,13 +571,13 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
               ),
               // Delete icon
               IconButton(
-                icon: Icon(Icons.delete, color: Colors.red),
+                icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error), // Updated
                 onPressed: _deleteExercise,
               ),
             ],
           ),
           body: snapshot.connectionState == ConnectionState.waiting
-              ? Center(child: CircularProgressIndicator())
+              ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary)) // Updated
               : _isEditing
               ? _buildEditView()
               : _buildReadOnlyView(snapshot),

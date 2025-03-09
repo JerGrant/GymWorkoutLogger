@@ -1,17 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart';
+import 'package:provider/provider.dart';  // Make sure you have provider in pubspec.yaml
 import 'screens/sign_in_page.dart';
 import 'screens/home_page.dart';
+import 'theme/app_theme.dart';
+import 'theme/theme_provider.dart';        // We'll show theme_provider below
+import 'package:lottie/lottie.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize Firebase and other essential resources
   await Firebase.initializeApp();
-
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -19,35 +19,33 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Gym Workout Logger',
-      theme: ThemeData(
-        scaffoldBackgroundColor: Color(0xFF1E1E1E), // Dark Gray Background
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-          brightness: Brightness.dark, // Ensures a dark theme
-        ),
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Colors.white),
-          bodyMedium: TextStyle(color: Colors.white),
-        ),
-        splashFactory: NoSplash.splashFactory, // Disables white ripple effect
-        highlightColor: Colors.black45, // Removes white highlight on tap
-        useMaterial3: true,
+    return ChangeNotifierProvider(
+      create: (_) => ThemeProvider(), // See theme_provider.dart below
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Gym Workout Logger',
+            // Our custom light and dark themes from app_theme.dart
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeProvider.currentTheme, // toggles between light/dark
+            initialRoute: '/splash',
+            routes: {
+              '/splash': (context) => const SplashScreen(),
+              '/': (context) => const SignInPage(),
+              '/home': (context) => const HomePage(),
+            },
+          );
+        },
       ),
-      // Initial route points to a splash screen
-      initialRoute: '/splash',
-      routes: {
-        '/splash': (context) => SplashScreen(), // Animated Splash Screen
-        '/': (context) => SignInPage(),
-        '/home': (context) => HomePage(),
-      },
     );
   }
 }
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({Key? key}) : super(key: key);
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
@@ -60,35 +58,36 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _navigateToNextScreen() async {
-    await Future.delayed(Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 3));
     Navigator.pushReplacementNamed(context, '/');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF000015), // Very Dark Blue Background
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Lottie Animation
             Lottie.asset(
-              'lib/assets/BlueDumbbell.json', // Ensure this file exists
+              'lib/assets/BlueDumbbell.json',
               width: 200,
               height: 200,
             ),
-            SizedBox(height: 20), // Spacing
+            const SizedBox(height: 20),
             Text(
               'Gym Workout Logger',
-              style: TextStyle(
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
               ),
             ),
-            SizedBox(height: 40), // Spacing
-            CircularProgressIndicator(color: Colors.white), // Loading indicator
+            const SizedBox(height: 40),
+            CircularProgressIndicator(
+              color: Theme.of(context).colorScheme.onPrimary,
+            ),
           ],
         ),
       ),

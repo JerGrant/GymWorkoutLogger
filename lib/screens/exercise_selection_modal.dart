@@ -46,11 +46,14 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF000015),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Updated from Color(0xFF000015)
       appBar: AppBar(
-        backgroundColor: Color(0xFF000015),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor, // Updated from Color(0xFF000015)
         surfaceTintColor: Colors.transparent,
-        title: Text('Select Exercises', style: TextStyle(color: Colors.white)),
+        title: Text(
+          'Select Exercises',
+          style: Theme.of(context).appBarTheme.titleTextStyle ?? TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color),
+        ),
       ),
       body: Column(
         children: [
@@ -60,13 +63,13 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
             child: TextField(
               decoration: InputDecoration(
                 labelText: "Search Exercises",
-                labelStyle: TextStyle(color: Colors.white70),
-                prefixIcon: Icon(Icons.search, color: Colors.white70),
+                labelStyle: (Theme.of(context).textTheme.bodyMedium ?? TextStyle()).copyWith(color: Theme.of(context).hintColor),
+                prefixIcon: Icon(Icons.search, color: Theme.of(context).iconTheme.color?.withOpacity(0.7)),
                 filled: true,
-                fillColor: Color(0xFF000015),
+                fillColor: Theme.of(context).scaffoldBackgroundColor,
                 border: OutlineInputBorder(),
               ),
-              style: TextStyle(color: Colors.white),
+              style: Theme.of(context).textTheme.bodyMedium,
               onChanged: (value) {
                 setState(() {
                   searchQuery = value;
@@ -81,14 +84,14 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
             child: DropdownButtonFormField<String>(
               decoration: InputDecoration(
                 labelText: "Sort By",
-                labelStyle: TextStyle(color: Colors.white70),
+                labelStyle: (Theme.of(context).textTheme.bodyMedium ?? TextStyle()).copyWith(color: Theme.of(context).hintColor),
                 filled: true,
-                fillColor: Color(0xFF000015),
+                fillColor: Theme.of(context).scaffoldBackgroundColor,
                 border: OutlineInputBorder(),
               ),
               value: sortBy,
-              dropdownColor: Color(0xFF000015),
-              style: TextStyle(color: Colors.white),
+              dropdownColor: Theme.of(context).scaffoldBackgroundColor,
+              style: Theme.of(context).textTheme.bodyMedium,
               items: ["Name", "Category", "Body Part"].map((String option) {
                 return DropdownMenuItem<String>(
                   value: option,
@@ -114,7 +117,7 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
                   .snapshots(),
               builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
                 if (!snapshot.hasData) {
-                  return Center(child: CircularProgressIndicator());
+                  return Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary));
                 }
 
                 // Convert Firestore docs to local List<Map<String, dynamic>>
@@ -179,7 +182,7 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
                           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                           child: Text(
                             entry.key,
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                            style: (Theme.of(context).textTheme.bodyMedium ?? TextStyle()).copyWith(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyMedium?.color),
                           ),
                         ),
                         // Items in this group
@@ -189,11 +192,11 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
                           return CheckboxListTile(
                             title: Text(
                               data['name'] ?? 'Unknown',
-                              style: TextStyle(color: Colors.white),
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).textTheme.bodyMedium?.color),
                             ),
                             subtitle: Text(
                               "Category: ${data['category'] ?? 'N/A'}, Body Part: ${data['bodyPart'] ?? 'N/A'}",
-                              style: TextStyle(color: Colors.white70),
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor),
                             ),
                             value: isSelected,
                             onChanged: (bool? value) {
@@ -227,7 +230,7 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
           FloatingActionButton(
             heroTag: "fabCreateExercise",
             onPressed: _createNewExercise,
-            backgroundColor: Color(0xFF007AFF),
+            backgroundColor: Theme.of(context).colorScheme.primary, // Updated from Color(0xFF007AFF)
             child: Icon(Icons.add),
             tooltip: 'Create New Exercise',
           ),
@@ -238,7 +241,7 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
               widget.onExercisesSelected(selectedExercises);
               Navigator.pop(context);
             },
-            backgroundColor: Color(0xFF007AFF),
+            backgroundColor: Theme.of(context).colorScheme.primary, // Updated
             child: Icon(Icons.check),
           ),
         ],

@@ -96,18 +96,18 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF000015),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Updated
       appBar: AppBar(
-        backgroundColor: Color(0xFF000015),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor, // Updated
         surfaceTintColor: Colors.transparent,
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: Theme.of(context).appBarTheme.iconTheme, // Updated
         title: Text(
           'Workout History',
-          style: TextStyle(color: Colors.white),
+          style: Theme.of(context).appBarTheme.titleTextStyle, // Updated
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.calendar_today, color: Color(0xFF007AFF)),
+            icon: Icon(Icons.calendar_today, color: Theme.of(context).colorScheme.primary), // Updated
             onPressed: _openCalendarFilter, // Open calendar filter
           )
         ],
@@ -119,7 +119,7 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
               padding: const EdgeInsets.all(10.0),
               child: Text(
                 "Showing Workouts: ${DateFormat.yMMMd().format(startDate!)} - ${DateFormat.yMMMd().format(endDate!)}",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 16, fontWeight: FontWeight.bold), // Updated
               ),
             ),
           // Sorting dropdown
@@ -128,9 +128,9 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
             child: DropdownButton<String>(
               isExpanded: true,
               value: sortOption,
-              dropdownColor: Color(0xFF000015),
-              style: TextStyle(color: Colors.white),
-              iconEnabledColor: Colors.white,
+              dropdownColor: Theme.of(context).scaffoldBackgroundColor, // Updated
+              style: Theme.of(context).textTheme.bodyMedium, // Updated
+              iconEnabledColor: Theme.of(context).iconTheme.color, // Updated
               onChanged: (String? newValue) {
                 setState(() {
                   sortOption = newValue!;
@@ -151,16 +151,16 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
             child: TextField(
               decoration: InputDecoration(
                 labelText: 'Search by name',
-                labelStyle: TextStyle(color: Colors.white70),
-                prefixIcon: Icon(Icons.search, color: Colors.white70),
+                labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor), // Updated
+                prefixIcon: Icon(Icons.search, color: Theme.of(context).iconTheme.color?.withOpacity(0.7)), // Updated
                 filled: true,
-                fillColor: Color(0xFF000015),
+                fillColor: Theme.of(context).scaffoldBackgroundColor, // Updated
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
-                  borderSide: BorderSide(color: Colors.white24),
+                  borderSide: BorderSide(color: Theme.of(context).dividerColor), // Updated
                 ),
               ),
-              style: TextStyle(color: Colors.white),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).textTheme.bodyMedium?.color), // Updated
               onChanged: _onSearchChanged,
             ),
           ),
@@ -170,7 +170,7 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
               stream: getWorkouts(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
-                  return Center(child: CircularProgressIndicator());
+                  return Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary)); // Updated
                 }
 
                 final docs = snapshot.data!.docs;
@@ -178,7 +178,7 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
                   return Center(
                     child: Text(
                       "No workouts found.",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white70),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 16, fontWeight: FontWeight.w500),
                     ),
                   );
                 }
@@ -203,7 +203,7 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
                     }
 
                     return Card(
-                      color: Color(0xFF1A1A2E),
+                      color: Theme.of(context).cardColor, // Updated
                       margin: EdgeInsets.all(8.0),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10.0),
@@ -211,20 +211,20 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
                       child: ListTile(
                         title: Text(
                           workout['name'] ?? 'Unnamed Workout',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         subtitle: Text(
                           subtitleText,
-                          style: TextStyle(color: Colors.white70),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor),
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.fitness_center, color: Color(0xFF007AFF)),
+                            Icon(Icons.fitness_center, color: Theme.of(context).colorScheme.primary), // Updated
                             SizedBox(width: 8),
                             Icon(
                               isFavorited ? Icons.star : Icons.star_border,
-                              color: isFavorited ? Colors.amber : Colors.grey,
+                              color: isFavorited ? Colors.amber : Colors.grey, // Keeping as is
                             ),
                           ],
                         ),

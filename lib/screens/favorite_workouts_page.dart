@@ -64,14 +64,18 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
       stream: getFavoriteWorkouts(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
-          return Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary));
         }
         final docs = snapshot.data!.docs;
         if (docs.isEmpty) {
           return Center(
             child: Text(
               "No favorite workouts found.",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white70),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+              ),
             ),
           );
         }
@@ -84,7 +88,7 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
             final isFavorited = workout['favorited'] == true;
 
             return Card(
-              color: Color(0xFF1A1A2E),
+              color: Theme.of(context).cardColor,
               margin: EdgeInsets.all(8.0),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10.0),
@@ -92,22 +96,22 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
               child: ListTile(
                 title: Text(
                   workout['name'] ?? 'Unnamed Workout',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 subtitle: Text(
                   DateFormat.yMMMd().format(
                     (workout['timestamp'] as Timestamp).toDate(),
                   ),
-                  style: TextStyle(color: Colors.white70),
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.fitness_center, color: Colors.white),
+                    Icon(Icons.fitness_center, color: Theme.of(context).iconTheme.color),
                     SizedBox(width: 8),
                     Icon(
                       isFavorited ? Icons.star : Icons.star_border,
-                      color: isFavorited ? Colors.amber : Colors.grey,
+                      color: isFavorited ? Colors.amber : Theme.of(context).disabledColor,
                     ),
                   ],
                 ),
@@ -144,11 +148,11 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF000015),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Updated
       appBar: AppBar(
-        backgroundColor: Color(0xFF000015),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor, // Updated
         surfaceTintColor: Colors.transparent,
-        title: Text('Favorite Workouts', style: TextStyle(color: Colors.white)),
+        title: Text('Favorite Workouts', style: Theme.of(context).appBarTheme.titleTextStyle), // Updated
       ),
       body: Column(
         children: [
@@ -158,16 +162,18 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
             child: TextField(
               decoration: InputDecoration(
                 labelText: 'Search favorite workouts',
-                labelStyle: TextStyle(color: Colors.white70),
-                prefixIcon: Icon(Icons.search, color: Colors.white70),
+                labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7),
+                ),
+                prefixIcon: Icon(Icons.search, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7)),
                 filled: true,
-                fillColor: Color(0xFF000015),
+                fillColor: Theme.of(context).scaffoldBackgroundColor, // Updated
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
-                  borderSide: BorderSide(color: Colors.white24),
+                  borderSide: BorderSide(color: Theme.of(context).dividerColor), // Updated
                 ),
               ),
-              style: TextStyle(color: Colors.white),
+              style: Theme.of(context).textTheme.bodyMedium,
               onChanged: _onSearchChanged,
             ),
           ),

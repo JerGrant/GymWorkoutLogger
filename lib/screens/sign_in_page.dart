@@ -64,16 +64,16 @@ class _SignInPageState extends State<SignInPage> {
         return Wrap(
           children: [
             ListTile(
-              leading: Icon(Icons.camera_alt, color: Colors.deepPurple),
-              title: Text("Take a Picture"),
+              leading: Icon(Icons.camera_alt, color: Theme.of(context).colorScheme.primary),
+              title: Text("Take a Picture", style: Theme.of(context).textTheme.bodyMedium),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(userId, ImageSource.camera);
               },
             ),
             ListTile(
-              leading: Icon(Icons.photo_library, color: Colors.deepPurple),
-              title: Text("Choose from Gallery"),
+              leading: Icon(Icons.photo_library, color: Theme.of(context).colorScheme.primary),
+              title: Text("Choose from Gallery", style: Theme.of(context).textTheme.bodyMedium),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(userId, ImageSource.gallery);
@@ -111,7 +111,7 @@ class _SignInPageState extends State<SignInPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        color: Color(0xFF000015), // Matches splash screen background
+        color: Theme.of(context).scaffoldBackgroundColor, // Updated from hardcoded Color(0xFF000015)
         child: Center(
           child: Padding(
             padding: EdgeInsets.all(16.0),
@@ -124,18 +124,16 @@ class _SignInPageState extends State<SignInPage> {
                   height: 120, // Adjust size as needed
                 ),
                 SizedBox(height: 20),
-
                 // Welcome Text
                 Text(
                   'Welcome Back to [APP NAME]!',
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white, // Keep text white for contrast
+                    color: Theme.of(context).textTheme.titleLarge?.color ?? Colors.white,
                   ),
                 ),
                 SizedBox(height: 20),
-
                 // Error Message (If any)
                 if (_errorMessage != null)
                   Padding(
@@ -146,25 +144,23 @@ class _SignInPageState extends State<SignInPage> {
                       textAlign: TextAlign.center,
                     ),
                   ),
-
                 SizedBox(height: 10),
-
-                // Original Google Sign-In Button (Now with Blue Color #007AFF)
+                // Google Sign-In Button
                 _isLoading
-                    ? CircularProgressIndicator(color: Colors.white)
+                    ? CircularProgressIndicator(color: Theme.of(context).colorScheme.onPrimary)
                     : ElevatedButton(
                   onPressed: _signInWithGoogle,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.login, color: Colors.white),
+                      Icon(Icons.login, color: Theme.of(context).colorScheme.onPrimary),
                       SizedBox(width: 10),
                       Text('Sign In with Google'),
                     ],
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF007AFF), // Updated Button Color
-                    foregroundColor: Colors.white, // Text/Icon color
+                    backgroundColor: Theme.of(context).colorScheme.primary, // Updated Button Color
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary, // Text/Icon color
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30), // Rounded button
                     ),

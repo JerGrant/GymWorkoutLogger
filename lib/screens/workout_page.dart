@@ -191,7 +191,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
           barRods: [
             BarChartRodData(
               toY: count.toDouble(),
-              color: Color(0xFF007AFF),
+              color: Theme.of(context).colorScheme.primary, // Updated
               width: 16,
               borderRadius: BorderRadius.circular(4),
             ),
@@ -293,7 +293,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
     return Container(
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Color(0xFF1A1A2E),
+        color: Theme.of(context).cardColor, // Updated
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -305,20 +305,20 @@ class _WorkoutPageState extends State<WorkoutPage> {
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ),
               if (onSettingsTap != null)
                 GestureDetector(
                   onTap: onSettingsTap,
-                  child: Icon(Icons.settings, size: 16, color: Colors.white),
+                  child: Icon(Icons.settings, size: 16, color: Theme.of(context).colorScheme.primary),
                 ),
             ],
           ),
           SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -341,18 +341,18 @@ class _WorkoutPageState extends State<WorkoutPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF000015),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Updated
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: Color(0xFF000015),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor, // Updated
         surfaceTintColor: Colors.transparent,
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: Theme.of(context).appBarTheme.iconTheme, // Updated
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Workout Log', style: TextStyle(color: Colors.white)),
+            Text('Workout Log', style: Theme.of(context).appBarTheme.titleTextStyle),
             IconButton(
-              icon: Icon(Icons.history, color: Color(0xFF007AFF)),
+              icon: Icon(Icons.history, color: Theme.of(context).colorScheme.primary), // Updated
               onPressed: () {
                 Navigator.push(
                   context,
@@ -388,7 +388,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
       width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0xFF007AFF),
+          backgroundColor: Theme.of(context).colorScheme.primary, // Updated
         ),
         onPressed: () {
           Navigator.push(
@@ -396,7 +396,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
             MaterialPageRoute(builder: (context) => WorkoutSessionPage()),
           );
         },
-        child: Text('Start a Workout', style: TextStyle(fontSize: 18, color: Colors.white)),
+        child: Text('Start a Workout', style: TextStyle(fontSize: 18, color: Theme.of(context).colorScheme.onPrimary)),
       ),
     );
   }
@@ -405,7 +405,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Workout Stats", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+        Text("Workout Stats", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.bold)),
         SizedBox(height: 10),
         // Row 1
         Row(
@@ -456,12 +456,12 @@ class _WorkoutPageState extends State<WorkoutPage> {
         width: double.infinity,
         padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
         decoration: BoxDecoration(
-          color: Color(0xFF1A1A2E),
+          color: Theme.of(context).cardColor, // Updated
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
           "Favorite Workouts",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -471,7 +471,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Workouts per week", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+        Text("Workouts per week", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.bold)),
         SizedBox(height: 10),
         Container(
           height: 200,
@@ -483,8 +483,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
               borderData: FlBorderData(
                 show: true,
                 border: Border(
-                  bottom: BorderSide(color: Colors.white24, width: 1),
-                  left: BorderSide(color: Colors.white24, width: 1),
+                  bottom: BorderSide(color: Theme.of(context).dividerColor, width: 1), // Updated
+                  left: BorderSide(color: Theme.of(context).dividerColor, width: 1), // Updated
                   right: BorderSide(color: Colors.transparent),
                   top: BorderSide(color: Colors.transparent),
                 ),
@@ -499,9 +499,9 @@ class _WorkoutPageState extends State<WorkoutPage> {
                       if (value % 1 != 0) return Container();
                       final int intVal = value.toInt();
                       if (intVal >= 0 && intVal <= 10) {
-                        return Text('$intVal', style: TextStyle(color: Colors.white));
+                        return Text('$intVal', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color));
                       } else if (intVal > 10 && intVal % 5 == 0) {
-                        return Text('$intVal', style: TextStyle(color: Colors.white));
+                        return Text('$intVal', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color));
                       }
                       return Container();
                     },
@@ -522,7 +522,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
                       final label = DateFormat("M/d").format(date);
                       return Padding(
                         padding: const EdgeInsets.only(top: 6.0),
-                        child: Text(label, style: TextStyle(fontSize: 10, color: Colors.white)),
+                        child: Text(label, style: TextStyle(fontSize: 10, color: Theme.of(context).textTheme.bodyMedium?.color)),
                       );
                     },
                   ),

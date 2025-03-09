@@ -48,11 +48,14 @@ class _CalendarFilterPageState extends State<CalendarFilterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF000015),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Updated from Color(0xFF000015)
       appBar: AppBar(
-        backgroundColor: Color(0xFF000015),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor, // Updated from Color(0xFF000015)
         surfaceTintColor: Colors.transparent,
-        title: Text("Workout Calendar", style: TextStyle(color: Colors.white)),
+        title: Text(
+          "Workout Calendar",
+          style: (Theme.of(context).textTheme.bodyMedium ?? TextStyle()).copyWith(fontSize: 16, fontWeight: FontWeight.bold), // Updated
+        ),
       ),
       body: Column(
         children: [
@@ -75,23 +78,23 @@ class _CalendarFilterPageState extends State<CalendarFilterPage> {
             headerStyle: HeaderStyle(
               formatButtonVisible: false,
               titleCentered: true,
-              titleTextStyle: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-              leftChevronIcon: Icon(Icons.chevron_left, color: Colors.white),
-              rightChevronIcon: Icon(Icons.chevron_right, color: Colors.white),
+              titleTextStyle: (Theme.of(context).textTheme.bodyMedium ?? TextStyle()).copyWith(fontSize: 16, fontWeight: FontWeight.bold),
+              leftChevronIcon: Icon(Icons.chevron_left, color: Theme.of(context).iconTheme.color),
+              rightChevronIcon: Icon(Icons.chevron_right, color: Theme.of(context).iconTheme.color),
               decoration: BoxDecoration(
-                color: Color(0xFF1A1A2E),
+                color: Theme.of(context).cardColor,
               ),
             ),
             calendarStyle: CalendarStyle(
-              defaultTextStyle: TextStyle(color: Colors.white),
-              weekendTextStyle: TextStyle(color: Colors.white),
-              outsideTextStyle: TextStyle(color: Colors.white70),
+              defaultTextStyle: Theme.of(context).textTheme.bodyMedium ?? TextStyle(),
+              weekendTextStyle: Theme.of(context).textTheme.bodyMedium ?? TextStyle(),
+              outsideTextStyle: (Theme.of(context).textTheme.bodyMedium ?? TextStyle()).copyWith(color: Theme.of(context).hintColor),
               todayDecoration: BoxDecoration(
-                color: Colors.blueAccent,
+                color: Theme.of(context).colorScheme.primary,
                 shape: BoxShape.circle,
               ),
               selectedDecoration: BoxDecoration(
-                color: Colors.deepPurpleAccent,
+                color: Theme.of(context).colorScheme.secondary,
                 shape: BoxShape.circle,
               ),
             ),
@@ -103,7 +106,7 @@ class _CalendarFilterPageState extends State<CalendarFilterPage> {
               startDate != null && endDate != null
                   ? "Showing Workouts: ${DateFormat.yMMMd().format(startDate!)} - ${DateFormat.yMMMd().format(endDate!)}"
                   : "Select a date range",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              style: (Theme.of(context).textTheme.bodyMedium ?? TextStyle()).copyWith(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
           // Workout List
@@ -112,14 +115,14 @@ class _CalendarFilterPageState extends State<CalendarFilterPage> {
               stream: getWorkouts(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
-                  return Center(child: CircularProgressIndicator());
+                  return Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary));
                 }
                 final docs = snapshot.data!.docs;
                 if (docs.isEmpty) {
                   return Center(
                     child: Text(
                       "No workouts found in this date range.",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white70),
+                      style: (Theme.of(context).textTheme.bodyMedium ?? TextStyle()).copyWith(fontSize: 16, fontWeight: FontWeight.w500),
                     ),
                   );
                 }
@@ -130,7 +133,7 @@ class _CalendarFilterPageState extends State<CalendarFilterPage> {
                     final workout = doc.data() as Map<String, dynamic>;
                     final workoutId = doc.id;
                     return Card(
-                      color: Color(0xFF1A1A2E),
+                      color: Theme.of(context).cardColor,
                       margin: EdgeInsets.all(8.0),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10.0),
@@ -138,15 +141,15 @@ class _CalendarFilterPageState extends State<CalendarFilterPage> {
                       child: ListTile(
                         title: Text(
                           workout['name'] ?? 'Unnamed Workout',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                          style: (Theme.of(context).textTheme.bodyMedium ?? TextStyle()).copyWith(fontWeight: FontWeight.bold),
                         ),
                         subtitle: Text(
                           DateFormat.yMMMd().format(
                             (workout['timestamp'] as Timestamp).toDate(),
                           ),
-                          style: TextStyle(color: Colors.white70),
+                          style: (Theme.of(context).textTheme.bodyMedium ?? TextStyle()).copyWith(color: Theme.of(context).hintColor),
                         ),
-                        trailing: Icon(Icons.fitness_center, color: Colors.white),
+                        trailing: Icon(Icons.fitness_center, color: Theme.of(context).colorScheme.primary),
                         onTap: () {
                           Navigator.push(
                             context,

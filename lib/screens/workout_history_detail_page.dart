@@ -129,7 +129,7 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
       final reps = setsField['reps'];
 
       if (duration == null && miles == null && reps == null) {
-        return Text("No cardio data logged", style: TextStyle(color: Colors.white70));
+        return Text("No cardio data logged", style: TextStyle(color: Theme.of(context).hintColor));
       }
 
       return Row(
@@ -137,22 +137,22 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
           if (duration != null)
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
-              child: Text("Duration: $duration", style: TextStyle(color: Colors.white70)),
+              child: Text("Duration: $duration", style: TextStyle(color: Theme.of(context).hintColor)),
             ),
           if (miles != null)
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
-              child: Text("Miles: $miles", style: TextStyle(color: Colors.white70)),
+              child: Text("Miles: $miles", style: TextStyle(color: Theme.of(context).hintColor)),
             ),
           if (reps != null)
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
-              child: Text("Reps: $reps", style: TextStyle(color: Colors.white70)),
+              child: Text("Reps: $reps", style: TextStyle(color: Theme.of(context).hintColor)),
             ),
         ],
       );
     }
-    return Text("No cardio data logged", style: TextStyle(color: Colors.white70));
+    return Text("No cardio data logged", style: TextStyle(color: Theme.of(context).hintColor));
   }
 
   List<Widget> _buildStrengthSets(List setsList) {
@@ -169,13 +169,13 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
         final reps = setData['reps'];
         final List<Widget> cardioWidgets = [];
         if (duration != null) {
-          cardioWidgets.add(Text("Duration: $duration", style: TextStyle(color: Colors.white70)));
+          cardioWidgets.add(Text("Duration: $duration", style: TextStyle(color: Theme.of(context).hintColor)));
         }
         if (miles != null) {
-          cardioWidgets.add(Text("Miles: $miles", style: TextStyle(color: Colors.white70)));
+          cardioWidgets.add(Text("Miles: $miles", style: TextStyle(color: Theme.of(context).hintColor)));
         }
         if (reps != null) {
-          cardioWidgets.add(Text("Reps: $reps", style: TextStyle(color: Colors.white70)));
+          cardioWidgets.add(Text("Reps: $reps", style: TextStyle(color: Theme.of(context).hintColor)));
         }
         widgets.add(
           Row(
@@ -191,11 +191,11 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
         final weight = setData['weight'];
         final reps = setData['reps'];
         if (weight == null && reps == null) continue;
-        widgets.add(Text("Set ${i + 1}: Weight: $weight | Reps: $reps", style: TextStyle(color: Colors.white70)));
+        widgets.add(Text("Set ${i + 1}: Weight: $weight | Reps: $reps", style: TextStyle(color: Theme.of(context).hintColor)));
       }
     }
     if (widgets.isEmpty) {
-      widgets.add(Text("No sets data for this exercise", style: TextStyle(color: Colors.white70)));
+      widgets.add(Text("No sets data for this exercise", style: TextStyle(color: Theme.of(context).hintColor)));
     }
     return widgets;
   }
@@ -212,11 +212,11 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
     final workoutDescription = widget.workout['description'] ?? '';
 
     return Scaffold(
-      backgroundColor: Color(0xFF000015),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Updated from hardcoded color
       appBar: AppBar(
-        backgroundColor: Color(0xFF000015),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor, // Updated
         surfaceTintColor: Colors.transparent,
-        title: Text(widget.workout['name'] ?? 'Workout Details', style: TextStyle(color: Colors.white)),
+        title: Text(widget.workout['name'] ?? 'Workout Details', style: Theme.of(context).appBarTheme.titleTextStyle), // Updated
         actions: [
           IconButton(
             icon: Icon(
@@ -232,32 +232,32 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
         children: [
           Text(
             "Date: ${DateFormat.yMMMd().format(workoutDate)}",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold), // Updated
           ),
           const SizedBox(height: 8),
           if (workoutDurationString != null)
             Text(
               "Duration: $workoutDurationString",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.bold), // Updated
             ),
           const SizedBox(height: 8),
           if (workoutDescription.isNotEmpty) ...[
             Text(
               "Description:",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.bold), // Updated
             ),
             const SizedBox(height: 4),
-            Text(workoutDescription, style: TextStyle(color: Colors.white70)),
+            Text(workoutDescription, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor)), // Updated
             const SizedBox(height: 16),
           ],
           Text(
             "Total Volume Lifted: $totalVolume lbs",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 16, fontWeight: FontWeight.w500), // Updated
           ),
           const SizedBox(height: 16),
           Text(
             "Exercises:",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.bold), // Updated
           ),
           const SizedBox(height: 8),
           ...exercises.map<Widget>((exercise) {
@@ -265,7 +265,7 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
             final setsField = exercise['sets'];
 
             return Card(
-              color: Color(0xFF1A1A2E),
+              color: Theme.of(context).cardColor, // Updated
               margin: const EdgeInsets.symmetric(vertical: 4),
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -274,14 +274,14 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
                   children: [
                     Text(
                       exerciseName,
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 16), // Updated
                     ),
                     const SizedBox(height: 4),
                     if (setsField is Map<String, dynamic>)
                       _buildCardioFields(exercise),
                     if (setsField is List) ..._buildStrengthSets(setsField),
                     if (setsField == null)
-                      Text("No data logged for this exercise", style: TextStyle(color: Colors.white70)),
+                      Text("No data logged for this exercise", style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor)), // Updated
                   ],
                 ),
               ),
@@ -300,26 +300,26 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
                   ),
                 );
               },
-              style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF007AFF)),
-              child: Text('Start this workout', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary), // Updated
+              child: Text('Start this workout', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onPrimary)), // Updated
             ),
           ],
           const SizedBox(height: 24),
           Text(
             "Comments:",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, fontWeight: FontWeight.bold), // Updated
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _commentController,
-            style: TextStyle(color: Colors.white),
+            style: Theme.of(context).textTheme.bodyMedium, // Updated
             decoration: InputDecoration(
               hintText: 'Enter your comment',
-              hintStyle: TextStyle(color: Colors.white70),
+              hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor), // Updated
               filled: true,
-              fillColor: Color(0xFF000015),
+              fillColor: Theme.of(context).scaffoldBackgroundColor, // Updated
               border: OutlineInputBorder(
-                borderSide: BorderSide(color: Colors.white24),
+                borderSide: BorderSide(color: Theme.of(context).dividerColor), // Updated
               ),
             ),
             maxLines: null,
@@ -327,8 +327,8 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
           const SizedBox(height: 8),
           ElevatedButton(
             onPressed: _saveComment,
-            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF007AFF)),
-            child: Text('Save Comment', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary), // Updated
+            child: Text('Save Comment', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onPrimary)), // Updated
           ),
         ],
       ),

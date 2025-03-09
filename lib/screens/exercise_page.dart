@@ -16,7 +16,6 @@ class NoGlowScrollBehavior extends ScrollBehavior {
   }
 }
 
-
 class _ExercisePageState extends State<ExercisePage> {
   TextEditingController _searchController = TextEditingController();
   String searchQuery = "";
@@ -58,58 +57,47 @@ class _ExercisePageState extends State<ExercisePage> {
     "Stretching & Mobility"
   ];
 
-  /// **Applies Search & Filters**
-  List<QueryDocumentSnapshot<Object?>> applyFilters(
-      List<QueryDocumentSnapshot<Object?>> exercises) {
+  /// Applies search & filters
+  List<QueryDocumentSnapshot<Object?>> applyFilters(List<QueryDocumentSnapshot<Object?>> exercises) {
     return exercises.where((exercise) {
       var data = exercise.data() as Map<String, dynamic>? ?? {};
-
       String name = data['name']?.toString().toLowerCase() ?? "";
       String category = data['category']?.toString() ?? "";
       String bodyPart = data['bodyPart']?.toString() ?? "";
-
       bool matchesSearch = name.contains(searchQuery.toLowerCase());
-      bool matchesCategory =
-          selectedCategory == null || category == selectedCategory;
+      bool matchesCategory = selectedCategory == null || category == selectedCategory;
       bool matchesBodyPart = selectedBodyPart == null ||
           bodyPart == selectedBodyPart ||
           (bodyPartHierarchy[selectedBodyPart]?.contains(bodyPart) ?? false);
-
       return matchesSearch && matchesCategory && matchesBodyPart;
     }).toList();
   }
 
-  /// **Groups Exercises by Selected Sort Option**
+  /// Groups exercises by selected sort option
   Map<String, List<QueryDocumentSnapshot<Object?>>>
   groupByField(List<QueryDocumentSnapshot<Object?>> exercises, String field) {
     Map<String, List<QueryDocumentSnapshot<Object?>>> grouped = {};
-
     for (var exercise in exercises) {
       var data = exercise.data() as Map<String, dynamic>? ?? {};
-
-      String key = data[field]?.toString().trim() ?? "Uncategorized"; // More meaningful default
-
+      String key = data[field]?.toString().trim() ?? "Uncategorized";
       if (field == "name" && key.isNotEmpty) {
-        key = key[0].toUpperCase(); // Sort Alphabetically
+        key = key[0].toUpperCase();
       }
-
       if (!grouped.containsKey(key)) {
         grouped[key] = [];
       }
       grouped[key]!.add(exercise);
     }
-
     grouped.removeWhere((key, value) => value.isEmpty);
     return grouped;
   }
 
-  /// **Navigates to Create Exercise Page**
+  /// Navigates to Create Exercise Page
   void _navigateToCreateExercisePage() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => CreateExercisePage()),
     );
-
     if (result != null) {
       setState(() {}); // Refresh after adding a new exercise
     }
@@ -121,43 +109,48 @@ class _ExercisePageState extends State<ExercisePage> {
 
     if (user == null) {
       return Scaffold(
-        backgroundColor: Color(0xFF000015), // Set background color
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           surfaceTintColor: Colors.transparent,
-          backgroundColor: Color(0xFF000015), // Ensures background stays fixed
-          elevation: 0, // Prevents shadow/lightening effect when scrolling
-          title: Text("Exercises", style: TextStyle(color: Colors.white)),
+          backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+          elevation: 0,
+          title: Text("Exercises", style: Theme.of(context).appBarTheme.titleTextStyle),
           automaticallyImplyLeading: false,
         ),
-        body: Center(child: Text("You need to log in to view your exercises.")),
+        body: Center(
+          child: Text(
+            "You need to log in to view your exercises.",
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
       );
     }
 
     return Scaffold(
-      backgroundColor: Color(0xFF000015), // Set background color
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         surfaceTintColor: Colors.transparent,
-        backgroundColor: Color(0xFF000015), // Ensures background stays fixed
-        elevation: 0, // Prevents shadow/lightening effect when scrolling
-        title: Text("Exercises", style: TextStyle(color: Colors.white)),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        elevation: 0,
+        title: Text("Exercises", style: Theme.of(context).appBarTheme.titleTextStyle),
         automaticallyImplyLeading: false,
       ),
       body: Column(
         children: [
-          /// **Search Bar**
+          /// Search Bar
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
                 labelText: "Search Exercises",
-                labelStyle: TextStyle(color: Colors.white70), // Label text color
-                prefixIcon: Icon(Icons.search, color: Colors.white70), // Search icon color
+                labelStyle: Theme.of(context).textTheme.bodyMedium,
+                prefixIcon: Icon(Icons.search, color: Theme.of(context).iconTheme.color),
                 filled: true,
-                fillColor: Color(0xFF000015), // Slightly lighter dark blue for contrast
+                fillColor: Theme.of(context).scaffoldBackgroundColor,
                 border: OutlineInputBorder(),
               ),
-              style: TextStyle(color: Colors.white), // Ensure input text is visible
+              style: Theme.of(context).textTheme.bodyMedium,
               onChanged: (value) {
                 setState(() {
                   searchQuery = value;
@@ -166,7 +159,7 @@ class _ExercisePageState extends State<ExercisePage> {
             ),
           ),
 
-          /// **Sorting Dropdown**
+          /// Sorting Dropdown
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: DropdownButtonFormField<String>(
@@ -174,7 +167,7 @@ class _ExercisePageState extends State<ExercisePage> {
               items: sortOptions
                   .map((sort) => DropdownMenuItem(
                 value: sort,
-                child: Text(sort),
+                child: Text(sort, style: Theme.of(context).textTheme.bodyMedium),
               ))
                   .toList(),
               onChanged: (value) {
@@ -182,11 +175,14 @@ class _ExercisePageState extends State<ExercisePage> {
                   selectedSort = value!;
                 });
               },
-              decoration: InputDecoration(labelText: "Sort By"),
+              decoration: InputDecoration(
+                labelText: "Sort By",
+                labelStyle: Theme.of(context).textTheme.bodyMedium,
+              ),
             ),
           ),
 
-          /// **Category & Body Part Filters**
+          /// Category & Body Part Filters
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
             child: Row(
@@ -196,10 +192,11 @@ class _ExercisePageState extends State<ExercisePage> {
                     value: selectedCategory,
                     items: [
                       DropdownMenuItem(
-                          value: null, child: Text("All Categories")),
+                          value: null,
+                          child: Text("All Categories", style: Theme.of(context).textTheme.bodyMedium)),
                       ...categories.map((category) => DropdownMenuItem(
                         value: category,
-                        child: Text(category),
+                        child: Text(category, style: Theme.of(context).textTheme.bodyMedium),
                       )),
                     ],
                     onChanged: (value) {
@@ -207,7 +204,10 @@ class _ExercisePageState extends State<ExercisePage> {
                         selectedCategory = value;
                       });
                     },
-                    decoration: InputDecoration(labelText: "Category"),
+                    decoration: InputDecoration(
+                      labelText: "Category",
+                      labelStyle: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   ),
                 ),
                 SizedBox(width: 8),
@@ -216,7 +216,8 @@ class _ExercisePageState extends State<ExercisePage> {
                     value: selectedBodyPart,
                     items: [
                       DropdownMenuItem(
-                          value: null, child: Text("All Body Parts")),
+                          value: null,
+                          child: Text("All Body Parts", style: Theme.of(context).textTheme.bodyMedium)),
                       ...bodyPartHierarchy.entries.expand((entry) {
                         String parent = entry.key;
                         List<String> subcategories = entry.value;
@@ -224,16 +225,18 @@ class _ExercisePageState extends State<ExercisePage> {
                           DropdownMenuItem(
                             value: parent,
                             child: Text(parent,
-                                style: TextStyle(fontWeight: FontWeight.bold)),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(fontWeight: FontWeight.bold)),
                           ),
-                          ...subcategories.map((subcategory) =>
-                              DropdownMenuItem(
-                                value: subcategory,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 16.0),
-                                  child: Text("— $subcategory"),
-                                ),
-                              )),
+                          ...subcategories.map((subcategory) => DropdownMenuItem(
+                            value: subcategory,
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 16.0),
+                              child: Text("— $subcategory", style: Theme.of(context).textTheme.bodyMedium),
+                            ),
+                          )),
                         ];
                       }).toList(),
                     ],
@@ -242,14 +245,17 @@ class _ExercisePageState extends State<ExercisePage> {
                         selectedBodyPart = value;
                       });
                     },
-                    decoration: InputDecoration(labelText: "Body Part"),
+                    decoration: InputDecoration(
+                      labelText: "Body Part",
+                      labelStyle: Theme.of(context).textTheme.bodyMedium,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
 
-          /// **Exercise List**
+          /// Exercise List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -260,14 +266,15 @@ class _ExercisePageState extends State<ExercisePage> {
                   .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
-                  return Center(child: CircularProgressIndicator());
+                  return Center(
+                      child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary));
                 }
-
                 var exercises = applyFilters(snapshot.data!.docs);
                 if (exercises.isEmpty) {
-                  return Center(child: Text("No exercises found."));
+                  return Center(
+                    child: Text("No exercises found.", style: Theme.of(context).textTheme.bodyMedium),
+                  );
                 }
-
                 Map<String, List<QueryDocumentSnapshot<Object?>>> groupedExercises =
                 groupByField(
                     exercises,
@@ -276,7 +283,6 @@ class _ExercisePageState extends State<ExercisePage> {
                         : selectedSort == "Body Part"
                         ? "bodyPart"
                         : "category");
-
                 return ScrollConfiguration(
                   behavior: NoGlowScrollBehavior(),
                   child: ListView.builder(
@@ -289,23 +295,23 @@ class _ExercisePageState extends State<ExercisePage> {
                           Container(
                             width: double.infinity,
                             decoration: BoxDecoration(
-                              color: Color(0xFF000015), // Force the fixed dark color
+                              color: Theme.of(context).cardColor,
                             ),
                             padding: const EdgeInsets.all(8.0),
                             child: Text(
-                              groupedExercises.keys.elementAt(index),
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                              groupKey,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyLarge
+                                  ?.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                           ),
                           ...groupedExercises[groupKey]!.map((exercise) {
                             var data = exercise.data() as Map<String, dynamic>;
                             return ListTile(
-                              title: Text(data['name']),
-                              subtitle: Text("${data['category']} - ${data['bodyPart']}"),
+                              title: Text(data['name'], style: Theme.of(context).textTheme.bodyLarge),
+                              subtitle: Text("${data['category']} - ${data['bodyPart']}",
+                                  style: Theme.of(context).textTheme.bodyMedium),
                               onTap: () {
                                 Navigator.push(
                                   context,
@@ -328,8 +334,8 @@ class _ExercisePageState extends State<ExercisePage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToCreateExercisePage,
-        backgroundColor: Color(0xFF007AFF), // Maintain contrast
-        child: Icon(Icons.add, color: Colors.white), // Ensure icon is visible
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        child: Icon(Icons.add, color: Theme.of(context).colorScheme.onPrimary),
       ),
     );
   }
