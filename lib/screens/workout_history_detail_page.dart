@@ -129,7 +129,7 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
       final reps = setsField['reps'];
 
       if (duration == null && miles == null && reps == null) {
-        return Text("No cardio data logged");
+        return Text("No cardio data logged", style: TextStyle(color: Colors.white70));
       }
 
       return Row(
@@ -137,22 +137,22 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
           if (duration != null)
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
-              child: Text("Duration: $duration"),
+              child: Text("Duration: $duration", style: TextStyle(color: Colors.white70)),
             ),
           if (miles != null)
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
-              child: Text("Miles: $miles"),
+              child: Text("Miles: $miles", style: TextStyle(color: Colors.white70)),
             ),
           if (reps != null)
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
-              child: Text("Reps: $reps"),
+              child: Text("Reps: $reps", style: TextStyle(color: Colors.white70)),
             ),
         ],
       );
     }
-    return Text("No cardio data logged");
+    return Text("No cardio data logged", style: TextStyle(color: Colors.white70));
   }
 
   List<Widget> _buildStrengthSets(List setsList) {
@@ -169,13 +169,13 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
         final reps = setData['reps'];
         final List<Widget> cardioWidgets = [];
         if (duration != null) {
-          cardioWidgets.add(Text("Duration: $duration"));
+          cardioWidgets.add(Text("Duration: $duration", style: TextStyle(color: Colors.white70)));
         }
         if (miles != null) {
-          cardioWidgets.add(Text("Miles: $miles"));
+          cardioWidgets.add(Text("Miles: $miles", style: TextStyle(color: Colors.white70)));
         }
         if (reps != null) {
-          cardioWidgets.add(Text("Reps: $reps"));
+          cardioWidgets.add(Text("Reps: $reps", style: TextStyle(color: Colors.white70)));
         }
         widgets.add(
           Row(
@@ -188,15 +188,14 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
           ),
         );
       } else {
-        // Otherwise, treat as a strength set.
         final weight = setData['weight'];
         final reps = setData['reps'];
         if (weight == null && reps == null) continue;
-        widgets.add(Text("Set ${i + 1}: Weight: $weight | Reps: $reps"));
+        widgets.add(Text("Set ${i + 1}: Weight: $weight | Reps: $reps", style: TextStyle(color: Colors.white70)));
       }
     }
     if (widgets.isEmpty) {
-      widgets.add(Text("No sets data for this exercise"));
+      widgets.add(Text("No sets data for this exercise", style: TextStyle(color: Colors.white70)));
     }
     return widgets;
   }
@@ -213,8 +212,11 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
     final workoutDescription = widget.workout['description'] ?? '';
 
     return Scaffold(
+      backgroundColor: Color(0xFF000015),
       appBar: AppBar(
-        title: Text(widget.workout['name'] ?? 'Workout Details'),
+        backgroundColor: Color(0xFF000015),
+        surfaceTintColor: Colors.transparent,
+        title: Text(widget.workout['name'] ?? 'Workout Details', style: TextStyle(color: Colors.white)),
         actions: [
           IconButton(
             icon: Icon(
@@ -230,45 +232,40 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
         children: [
           Text(
             "Date: ${DateFormat.yMMMd().format(workoutDate)}",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           const SizedBox(height: 8),
-
-          // Show the duration string if present
           if (workoutDurationString != null)
             Text(
               "Duration: $workoutDurationString",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
             ),
           const SizedBox(height: 8),
-
           if (workoutDescription.isNotEmpty) ...[
             Text(
               "Description:",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
             ),
             const SizedBox(height: 4),
-            Text(workoutDescription),
+            Text(workoutDescription, style: TextStyle(color: Colors.white70)),
             const SizedBox(height: 16),
           ],
-
           Text(
             "Total Volume Lifted: $totalVolume lbs",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
           ),
           const SizedBox(height: 16),
-
           Text(
             "Exercises:",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           const SizedBox(height: 8),
-
           ...exercises.map<Widget>((exercise) {
             final exerciseName = exercise['name'] ?? 'Unnamed Exercise';
             final setsField = exercise['sets'];
 
             return Card(
+              color: Color(0xFF1A1A2E),
               margin: const EdgeInsets.symmetric(vertical: 4),
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -277,21 +274,19 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
                   children: [
                     Text(
                       exerciseName,
-                      style:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
                     ),
                     const SizedBox(height: 4),
                     if (setsField is Map<String, dynamic>)
                       _buildCardioFields(exercise),
                     if (setsField is List) ..._buildStrengthSets(setsField),
                     if (setsField == null)
-                      Text("No data logged for this exercise"),
+                      Text("No data logged for this exercise", style: TextStyle(color: Colors.white70)),
                   ],
                 ),
               ),
             );
           }).toList(),
-
           if (widget.workout['favorited'] == true) ...[
             const SizedBox(height: 16),
             ElevatedButton(
@@ -305,28 +300,35 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
                   ),
                 );
               },
-              child: Text('Start this workout'),
+              style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF007AFF)),
+              child: Text('Start this workout', style: TextStyle(color: Colors.white)),
             ),
           ],
-
           const SizedBox(height: 24),
           Text(
             "Comments:",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _commentController,
+            style: TextStyle(color: Colors.white),
             decoration: InputDecoration(
               hintText: 'Enter your comment',
-              border: OutlineInputBorder(),
+              hintStyle: TextStyle(color: Colors.white70),
+              filled: true,
+              fillColor: Color(0xFF000015),
+              border: OutlineInputBorder(
+                borderSide: BorderSide(color: Colors.white24),
+              ),
             ),
             maxLines: null,
           ),
           const SizedBox(height: 8),
           ElevatedButton(
             onPressed: _saveComment,
-            child: Text('Save Comment'),
+            style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF007AFF)),
+            child: Text('Save Comment', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

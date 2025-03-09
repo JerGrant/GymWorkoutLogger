@@ -21,12 +21,12 @@ class _WorkoutPageState extends State<WorkoutPage> {
   // Basic stats
   int totalWorkouts = 0;
   int workoutsThisMonth = 0;
-  int totalDuration = 0;    // in minutes
-  double avgDuration = 0;   // in minutes
+  int totalDuration = 0; // in minutes
+  double avgDuration = 0; // in minutes
 
   // Streaks (session-based, not deduplicating by day)
-  int currentStreak = 0;    // chain of consecutive sessions including the latest
-  int longestStreak = 0;    // max chain across entire history
+  int currentStreak = 0; // chain of consecutive sessions including the latest
+  int longestStreak = 0; // max chain across entire history
 
   // Expected workouts per week => allowed rest days = 7 - expectedWorkoutDays
   int expectedWorkoutDays = 5;
@@ -89,7 +89,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
 
       // 2) Convert doc['duration'] from SECONDS to MINUTES
       final int secs = parseDuration(doc['duration']); // parse as int
-      final int minutes = secs ~/ 60;                  // integer division
+      final int minutes = secs ~/ 60; // integer division
       durationSumInMinutes += minutes;
 
       // 3) Store session time for streak logic
@@ -113,7 +113,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
       totalWorkouts = total;
       workoutsThisMonth = thisMonth;
       totalDuration = durationSumInMinutes; // total duration in minutes
-      avgDuration = average;               // average in minutes (double)
+      avgDuration = average; // average in minutes (double)
       currentStreak = curStreak;
       longestStreak = maxStreak;
     });
@@ -293,7 +293,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
     return Container(
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey[200],
+        color: Color(0xFF1A1A2E),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -305,20 +305,20 @@ class _WorkoutPageState extends State<WorkoutPage> {
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white),
                 ),
               ),
               if (onSettingsTap != null)
                 GestureDetector(
                   onTap: onSettingsTap,
-                  child: Icon(Icons.settings, size: 16),
+                  child: Icon(Icons.settings, size: 16, color: Colors.white),
                 ),
             ],
           ),
           SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
           ),
         ],
       ),
@@ -341,14 +341,18 @@ class _WorkoutPageState extends State<WorkoutPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFF000015),
       appBar: AppBar(
-        automaticallyImplyLeading: false, // Removes the back arrow
+        automaticallyImplyLeading: false,
+        backgroundColor: Color(0xFF000015),
+        surfaceTintColor: Colors.transparent,
+        iconTheme: IconThemeData(color: Colors.white),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Workout Log'),
+            Text('Workout Log', style: TextStyle(color: Colors.white)),
             IconButton(
-              icon: Icon(Icons.history),
+              icon: Icon(Icons.history, color: Color(0xFF007AFF)),
               onPressed: () {
                 Navigator.push(
                   context,
@@ -369,7 +373,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
               SizedBox(height: 20),
               _buildWorkoutStats(),
               SizedBox(height: 20),
-              // New Favorite Workouts Tile
               _buildFavoriteWorkoutsTile(),
               SizedBox(height: 20),
               _buildWeeklyChart(),
@@ -384,13 +387,16 @@ class _WorkoutPageState extends State<WorkoutPage> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Color(0xFF007AFF),
+        ),
         onPressed: () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => WorkoutSessionPage()),
           );
         },
-        child: Text('Start a Workout', style: TextStyle(fontSize: 18)),
+        child: Text('Start a Workout', style: TextStyle(fontSize: 18, color: Colors.white)),
       ),
     );
   }
@@ -399,7 +405,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Workout Stats", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        Text("Workout Stats", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
         SizedBox(height: 10),
         // Row 1
         Row(
@@ -450,12 +456,12 @@ class _WorkoutPageState extends State<WorkoutPage> {
         width: double.infinity,
         padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
         decoration: BoxDecoration(
-          color: Colors.amber[100],
+          color: Color(0xFF1A1A2E),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
           "Favorite Workouts",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
         ),
       ),
     );
@@ -465,7 +471,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Workouts per week", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        Text("Workouts per week", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
         SizedBox(height: 10),
         Container(
           height: 200,
@@ -477,8 +483,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
               borderData: FlBorderData(
                 show: true,
                 border: Border(
-                  bottom: BorderSide(color: Colors.grey, width: 1),
-                  left: BorderSide(color: Colors.grey, width: 1),
+                  bottom: BorderSide(color: Colors.white24, width: 1),
+                  left: BorderSide(color: Colors.white24, width: 1),
                   right: BorderSide(color: Colors.transparent),
                   top: BorderSide(color: Colors.transparent),
                 ),
@@ -490,20 +496,13 @@ class _WorkoutPageState extends State<WorkoutPage> {
                     showTitles: true,
                     reservedSize: 30,
                     getTitlesWidget: (double value, TitleMeta meta) {
-                      // Only show labels for integer values
                       if (value % 1 != 0) return Container();
-
                       final int intVal = value.toInt();
-
-                      // Show all integers from 0 to 10
                       if (intVal >= 0 && intVal <= 10) {
-                        return Text('$intVal');
+                        return Text('$intVal', style: TextStyle(color: Colors.white));
+                      } else if (intVal > 10 && intVal % 5 == 0) {
+                        return Text('$intVal', style: TextStyle(color: Colors.white));
                       }
-                      // Beyond 10, show multiples of 5
-                      else if (intVal > 10 && intVal % 5 == 0) {
-                        return Text('$intVal');
-                      }
-                      // Hide everything else
                       return Container();
                     },
                   ),
@@ -523,7 +522,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
                       final label = DateFormat("M/d").format(date);
                       return Padding(
                         padding: const EdgeInsets.only(top: 6.0),
-                        child: Text(label, style: TextStyle(fontSize: 10)),
+                        child: Text(label, style: TextStyle(fontSize: 10, color: Colors.white)),
                       );
                     },
                   ),

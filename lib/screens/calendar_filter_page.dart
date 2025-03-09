@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
-import 'workout_history_detail_page.dart'; // Import the detail page
+import 'workout_history_detail_page.dart';
 
 class CalendarFilterPage extends StatefulWidget {
   @override
@@ -48,10 +48,15 @@ class _CalendarFilterPageState extends State<CalendarFilterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Workout Calendar")),
+      backgroundColor: Color(0xFF000015),
+      appBar: AppBar(
+        backgroundColor: Color(0xFF000015),
+        surfaceTintColor: Colors.transparent,
+        title: Text("Workout Calendar", style: TextStyle(color: Colors.white)),
+      ),
       body: Column(
         children: [
-          // **Calendar Widget**
+          // Calendar Widget
           TableCalendar(
             firstDay: DateTime(2000),
             lastDay: DateTime(2100),
@@ -70,8 +75,17 @@ class _CalendarFilterPageState extends State<CalendarFilterPage> {
             headerStyle: HeaderStyle(
               formatButtonVisible: false,
               titleCentered: true,
+              titleTextStyle: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              leftChevronIcon: Icon(Icons.chevron_left, color: Colors.white),
+              rightChevronIcon: Icon(Icons.chevron_right, color: Colors.white),
+              decoration: BoxDecoration(
+                color: Color(0xFF1A1A2E),
+              ),
             ),
             calendarStyle: CalendarStyle(
+              defaultTextStyle: TextStyle(color: Colors.white),
+              weekendTextStyle: TextStyle(color: Colors.white),
+              outsideTextStyle: TextStyle(color: Colors.white70),
               todayDecoration: BoxDecoration(
                 color: Colors.blueAccent,
                 shape: BoxShape.circle,
@@ -82,19 +96,17 @@ class _CalendarFilterPageState extends State<CalendarFilterPage> {
               ),
             ),
           ),
-
-          // **Selected Date Range Display**
+          // Selected Date Range Display
           Padding(
             padding: const EdgeInsets.all(10.0),
             child: Text(
               startDate != null && endDate != null
                   ? "Showing Workouts: ${DateFormat.yMMMd().format(startDate!)} - ${DateFormat.yMMMd().format(endDate!)}"
                   : "Select a date range",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ),
-
-          // **Workout List**
+          // Workout List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: getWorkouts(),
@@ -102,25 +114,23 @@ class _CalendarFilterPageState extends State<CalendarFilterPage> {
                 if (!snapshot.hasData) {
                   return Center(child: CircularProgressIndicator());
                 }
-
                 final docs = snapshot.data!.docs;
                 if (docs.isEmpty) {
                   return Center(
                     child: Text(
                       "No workouts found in this date range.",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white70),
                     ),
                   );
                 }
-
                 return ListView.builder(
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     final doc = docs[index];
                     final workout = doc.data() as Map<String, dynamic>;
-                    final workoutId = doc.id; // Firestore document ID
-
+                    final workoutId = doc.id;
                     return Card(
+                      color: Color(0xFF1A1A2E),
                       margin: EdgeInsets.all(8.0),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10.0),
@@ -128,16 +138,16 @@ class _CalendarFilterPageState extends State<CalendarFilterPage> {
                       child: ListTile(
                         title: Text(
                           workout['name'] ?? 'Unnamed Workout',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                         subtitle: Text(
                           DateFormat.yMMMd().format(
                             (workout['timestamp'] as Timestamp).toDate(),
                           ),
+                          style: TextStyle(color: Colors.white70),
                         ),
-                        trailing: Icon(Icons.fitness_center),
+                        trailing: Icon(Icons.fitness_center, color: Colors.white),
                         onTap: () {
-                          // Navigate to Workout Detail Page
                           Navigator.push(
                             context,
                             MaterialPageRoute(

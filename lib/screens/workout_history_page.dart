@@ -96,11 +96,18 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFF000015),
       appBar: AppBar(
-        title: Text('Workout History'),
+        backgroundColor: Color(0xFF000015),
+        surfaceTintColor: Colors.transparent,
+        iconTheme: IconThemeData(color: Colors.white),
+        title: Text(
+          'Workout History',
+          style: TextStyle(color: Colors.white),
+        ),
         actions: [
           IconButton(
-            icon: Icon(Icons.calendar_today),
+            icon: Icon(Icons.calendar_today, color: Color(0xFF007AFF)),
             onPressed: _openCalendarFilter, // Open calendar filter
           )
         ],
@@ -111,9 +118,8 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
             Padding(
               padding: const EdgeInsets.all(10.0),
               child: Text(
-                "Showing Workouts: "
-                    "${DateFormat.yMMMd().format(startDate!)} - ${DateFormat.yMMMd().format(endDate!)}",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                "Showing Workouts: ${DateFormat.yMMMd().format(startDate!)} - ${DateFormat.yMMMd().format(endDate!)}",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
               ),
             ),
           // Sorting dropdown
@@ -122,6 +128,9 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
             child: DropdownButton<String>(
               isExpanded: true,
               value: sortOption,
+              dropdownColor: Color(0xFF000015),
+              style: TextStyle(color: Colors.white),
+              iconEnabledColor: Colors.white,
               onChanged: (String? newValue) {
                 setState(() {
                   sortOption = newValue!;
@@ -142,11 +151,16 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
             child: TextField(
               decoration: InputDecoration(
                 labelText: 'Search by name',
-                prefixIcon: Icon(Icons.search),
+                labelStyle: TextStyle(color: Colors.white70),
+                prefixIcon: Icon(Icons.search, color: Colors.white70),
+                filled: true,
+                fillColor: Color(0xFF000015),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
+                  borderSide: BorderSide(color: Colors.white24),
                 ),
               ),
+              style: TextStyle(color: Colors.white),
               onChanged: _onSearchChanged,
             ),
           ),
@@ -164,7 +178,7 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
                   return Center(
                     child: Text(
                       "No workouts found.",
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white70),
                     ),
                   );
                 }
@@ -189,6 +203,7 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
                     }
 
                     return Card(
+                      color: Color(0xFF1A1A2E),
                       margin: EdgeInsets.all(8.0),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10.0),
@@ -196,13 +211,16 @@ class _WorkoutHistoryPageState extends State<WorkoutHistoryPage> {
                       child: ListTile(
                         title: Text(
                           workout['name'] ?? 'Unnamed Workout',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                         ),
-                        subtitle: Text(subtitleText),
+                        subtitle: Text(
+                          subtitleText,
+                          style: TextStyle(color: Colors.white70),
+                        ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.fitness_center),
+                            Icon(Icons.fitness_center, color: Color(0xFF007AFF)),
                             SizedBox(width: 8),
                             Icon(
                               isFavorited ? Icons.star : Icons.star_border,

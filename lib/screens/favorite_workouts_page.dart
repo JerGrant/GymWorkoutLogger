@@ -24,7 +24,8 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
   }
 
   Stream<QuerySnapshot> getFavoriteWorkouts() {
-    Query query = _firestore.collection('workouts')
+    Query query = _firestore
+        .collection('workouts')
         .where('userId', isEqualTo: user?.uid)
         .where('favorited', isEqualTo: true)
         .orderBy('timestamp', descending: true);
@@ -70,7 +71,7 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
           return Center(
             child: Text(
               "No favorite workouts found.",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white70),
             ),
           );
         }
@@ -83,6 +84,7 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
             final isFavorited = workout['favorited'] == true;
 
             return Card(
+              color: Color(0xFF1A1A2E),
               margin: EdgeInsets.all(8.0),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10.0),
@@ -90,17 +92,18 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
               child: ListTile(
                 title: Text(
                   workout['name'] ?? 'Unnamed Workout',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 subtitle: Text(
                   DateFormat.yMMMd().format(
                     (workout['timestamp'] as Timestamp).toDate(),
                   ),
+                  style: TextStyle(color: Colors.white70),
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.fitness_center),
+                    Icon(Icons.fitness_center, color: Colors.white),
                     SizedBox(width: 8),
                     Icon(
                       isFavorited ? Icons.star : Icons.star_border,
@@ -111,14 +114,12 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
                 onTap: () {
                   // Grab the old workout data as a template
                   final docData = doc.data() as Map<String, dynamic>;
-
                   // Remove fields that belong to the old doc
                   docData.remove('timestamp');
                   docData.remove('duration');
                   docData.remove('favorited');
                   // If there's an 'id' field or doc ID, remove it too
                   docData.remove('id');
-
                   // Also remove any leftover controllers/focusNodes so you don't reuse them
                   docData.remove('controllers');
                   docData.remove('focusNodes');
@@ -127,7 +128,6 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => WorkoutSessionPage(
-                        // This is just a template now, with no old doc ID
                         preloadedWorkout: docData,
                       ),
                     ),
@@ -144,8 +144,11 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFF000015),
       appBar: AppBar(
-        title: Text('Favorite Workouts'),
+        backgroundColor: Color(0xFF000015),
+        surfaceTintColor: Colors.transparent,
+        title: Text('Favorite Workouts', style: TextStyle(color: Colors.white)),
       ),
       body: Column(
         children: [
@@ -155,11 +158,16 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
             child: TextField(
               decoration: InputDecoration(
                 labelText: 'Search favorite workouts',
-                prefixIcon: Icon(Icons.search),
+                labelStyle: TextStyle(color: Colors.white70),
+                prefixIcon: Icon(Icons.search, color: Colors.white70),
+                filled: true,
+                fillColor: Color(0xFF000015),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
+                  borderSide: BorderSide(color: Colors.white24),
                 ),
               ),
+              style: TextStyle(color: Colors.white),
               onChanged: _onSearchChanged,
             ),
           ),
