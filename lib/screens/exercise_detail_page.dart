@@ -21,8 +21,8 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
 
   // Dropdown values
   String selectedCategory = "";
-  String? selectedMainBodyPart;   // e.g. "Legs"
-  String? selectedSubBodyPart;    // e.g. "Hamstrings"
+  String? selectedMainBodyPart; // e.g. "Legs"
+  String? selectedSubBodyPart;  // e.g. "Hamstrings"
 
   /// List of categories for the "Category" dropdown
   final List<String> categories = [
@@ -74,12 +74,11 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
     // Populate category (or default to the first in the list)
     selectedCategory = data["category"] ?? categories.first;
 
-    // Read new fields if present:
-    String? mainBP = data["mainBodyPart"];    // Might be null
-    String? subBP = data["subBodyPart"];      // Might be null
+    // Read new fields if present
+    String? mainBP = data["mainBodyPart"];
+    String? subBP = data["subBodyPart"];
 
-    // Fallback to older fields if new ones are missing:
-    // Use "bodyPart" for main part and "subcategory" for specific muscle group.
+    // Fallback to older fields if new ones are missing
     String? oldMain = data["bodyPart"];
     String? oldSub = data["subcategory"];
 
@@ -90,26 +89,19 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
       subBP = oldSub; // e.g., "Front Delts"
     }
 
-    // Debug prints:
-    debugPrint(">>> mainBP after fallback: $mainBP");
-    debugPrint(">>> subBP after fallback: $subBP");
-
-    // If we do have a subBP, ensure it matches one of the valid options for mainBP.
+    // Ensure subBP is valid for mainBP
     if (mainBP != null && mainBP.isNotEmpty) {
       final validSubs = bodyPartHierarchy[mainBP] ?? [];
       if (subBP != null && subBP.isNotEmpty && !validSubs.contains(subBP)) {
-        debugPrint(
-          "WARNING: subBodyPart '$subBP' not found in $validSubs. Setting subBP to null.",
-        );
+        debugPrint("WARNING: subBodyPart '$subBP' not found in $validSubs. Setting subBP to null.");
         subBP = null;
       }
     }
 
-    // Now set the selected values.
     selectedMainBodyPart = (mainBP != null && mainBP.isNotEmpty) ? mainBP : null;
     selectedSubBodyPart = (subBP != null && subBP.isNotEmpty) ? subBP : null;
 
-    // Fallback: if we still don't have a valid main body part, default to "Other".
+    // Fallback if still no valid main part
     if (selectedMainBodyPart == null ||
         !bodyPartHierarchy.containsKey(selectedMainBodyPart)) {
       selectedMainBodyPart = "Other";
@@ -119,7 +111,7 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
     debugPrint(">>> final subBP: $selectedSubBodyPart");
   }
 
-  /// Save updates to Firestore.
+  /// Save updates to Firestore
   void _updateExercise() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -157,7 +149,7 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
     }
   }
 
-  /// Delete this exercise from Firestore.
+  /// Delete this exercise from Firestore
   void _deleteExercise() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -210,7 +202,7 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
         false;
   }
 
-  /// Fetch ALL occurrences of this exercise, find the personal best, then get the last 10 by date.
+  /// Fetch ALL occurrences of this exercise, find personal best, then last 10
   Future<Map<String, dynamic>> _fetchExerciseHistory(String exerciseId) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return {'bestEntry': null, 'recent': []};
@@ -288,18 +280,15 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
     };
   }
 
-  /// READ-ONLY view: show best volume up top, then last 10.
+  /// READ-ONLY view: show best volume up top, then last 10
   Widget _buildReadOnlyView(AsyncSnapshot<Map<String, dynamic>> snapshot) {
     final data = widget.exercise.data() as Map<String, dynamic>? ?? {};
     final exerciseName = data["name"] ?? "";
     final exerciseCategory = data["category"] ?? "";
 
-    // For backward compatibility, use new fields if present; otherwise fallback:
-    final exerciseMainBodyPart = data["mainBodyPart"] ??
-        data["bodyPart"] ??
-        "Other";
-    final exerciseSubBodyPart =
-        data["subBodyPart"] ?? data["subcategory"] ?? "";
+    // For backward compatibility, use new fields if present; otherwise fallback
+    final exerciseMainBodyPart = data["mainBodyPart"] ?? data["bodyPart"] ?? "Other";
+    final exerciseSubBodyPart = data["subBodyPart"] ?? data["subcategory"] ?? "";
 
     final exerciseDescription = data["description"] ?? "";
     final exerciseNotes = data["notes"] ?? "";
@@ -316,37 +305,35 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           // Basic info
           Text(
             "Name: $exerciseName",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
           ),
           SizedBox(height: 8),
-          Text("Category: $exerciseCategory"),
-          Text("Main Body Part: $exerciseMainBodyPart"),
+          Text("Category: $exerciseCategory", style: TextStyle(color: Colors.white70)),
+          Text("Main Body Part: $exerciseMainBodyPart", style: TextStyle(color: Colors.white70)),
           if (exerciseSubBodyPart.isNotEmpty)
-            Text("Specific Muscle Group: $exerciseSubBodyPart"),
+            Text("Specific Muscle Group: $exerciseSubBodyPart", style: TextStyle(color: Colors.white70)),
           if (exerciseDescription.isNotEmpty) ...[
             SizedBox(height: 8),
-            Text("Description: $exerciseDescription"),
+            Text("Description: $exerciseDescription", style: TextStyle(color: Colors.white70)),
           ],
           if (exerciseNotes.isNotEmpty) ...[
             SizedBox(height: 8),
-            Text("Notes: $exerciseNotes"),
+            Text("Notes: $exerciseNotes", style: TextStyle(color: Colors.white70)),
           ],
           SizedBox(height: 20),
 
           // Personal Best
-          Text(
-            "Personal Best",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
+          Text("Personal Best", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
           if (bestEntry == null)
-            Text("No data found.")
+            Text("No data found.", style: TextStyle(color: Colors.white70))
           else
             Card(
-              color: Colors.amber.shade50,
+              color: Color(0xFF1A1A2E),
               child: ListTile(
                 leading: Icon(Icons.star, color: Colors.amber),
                 title: Text(
                   "Date: ${bestEntry['date'].toLocal().toString().split('.')[0]}",
+                  style: TextStyle(color: Colors.white),
                 ),
                 subtitle: _buildEntrySubtitle(bestEntry),
               ),
@@ -355,12 +342,9 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           SizedBox(height: 20),
 
           // Recent History
-          Text(
-            "Recent History",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
+          Text("Recent History", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
           if (recent.isEmpty)
-            Text("No recent data found.")
+            Text("No recent data found.", style: TextStyle(color: Colors.white70))
           else
             ListView.builder(
               shrinkWrap: true,
@@ -369,10 +353,12 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
               itemBuilder: (context, index) {
                 var entry = recent[index];
                 return Card(
+                  color: Color(0xFF1A1A2E),
                   margin: EdgeInsets.symmetric(vertical: 6),
                   child: ListTile(
                     title: Text(
                       "${entry['date'].toLocal().toString().split('.')[0]}",
+                      style: TextStyle(color: Colors.white),
                     ),
                     subtitle: _buildEntrySubtitle(entry),
                   ),
@@ -384,7 +370,7 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
     );
   }
 
-  /// Helper to build the text showing volume & set details.
+  /// Helper to build text showing volume & set details
   Widget _buildEntrySubtitle(Map<String, dynamic> entry) {
     double volume = entry['volume'] ?? 0.0;
     List sets = entry['sets'] ?? [];
@@ -400,8 +386,8 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Volume: ${volume.toStringAsFixed(1)}"),
-        Text(setDetails),
+        Text("Volume: ${volume.toStringAsFixed(1)}", style: TextStyle(color: Colors.white70)),
+        Text(setDetails, style: TextStyle(color: Colors.white70)),
       ],
     );
   }
@@ -412,61 +398,90 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
       padding: EdgeInsets.all(16),
       child: Column(
         children: [
+          // Exercise Name
           TextField(
             controller: _nameController,
-            decoration: InputDecoration(labelText: "Exercise Name"),
+            style: TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: "Exercise Name",
+              labelStyle: TextStyle(color: Colors.white70),
+              filled: true,
+              fillColor: Color(0xFF000015),
+              border: OutlineInputBorder(
+                borderSide: BorderSide(color: Colors.white24),
+              ),
+            ),
           ),
           SizedBox(height: 8),
+
+          // Category
           DropdownButtonFormField(
             value: selectedCategory,
+            dropdownColor: Color(0xFF000015),
+            style: TextStyle(color: Colors.white),
             items: categories.map((category) {
-              return DropdownMenuItem(value: category, child: Text(category));
+              return DropdownMenuItem(value: category, child: Text(category, style: TextStyle(color: Colors.white)));
             }).toList(),
             onChanged: (value) {
               setState(() {
                 selectedCategory = value.toString();
               });
             },
-            decoration: InputDecoration(labelText: "Category"),
+            decoration: InputDecoration(
+              labelText: "Category",
+              labelStyle: TextStyle(color: Colors.white70),
+              filled: true,
+              fillColor: Color(0xFF000015),
+              border: OutlineInputBorder(
+                borderSide: BorderSide(color: Colors.white24),
+              ),
+            ),
           ),
           SizedBox(height: 8),
 
-          // MAIN BODY PART
+          // Main Body Part
           DropdownButtonFormField<String>(
             value: bodyPartHierarchy.containsKey(selectedMainBodyPart)
                 ? selectedMainBodyPart
                 : null,
+            dropdownColor: Color(0xFF000015),
+            style: TextStyle(color: Colors.white),
             items: bodyPartHierarchy.keys.map((mainPart) {
               return DropdownMenuItem(
                 value: mainPart,
-                child: Text(
-                  mainPart,
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+                child: Text(mainPart, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
               );
             }).toList(),
             onChanged: (value) {
               setState(() {
                 selectedMainBodyPart = value;
-                selectedSubBodyPart = null; // reset sub-body part
+                selectedSubBodyPart = null;
               });
             },
-            decoration: InputDecoration(labelText: "Main Body Part"),
+            decoration: InputDecoration(
+              labelText: "Main Body Part",
+              labelStyle: TextStyle(color: Colors.white70),
+              filled: true,
+              fillColor: Color(0xFF000015),
+              border: OutlineInputBorder(
+                borderSide: BorderSide(color: Colors.white24),
+              ),
+            ),
           ),
           SizedBox(height: 8),
 
-          // SUB BODY PART (only if the selected main part has sub-muscles)
-          if (selectedMainBodyPart != null &&
-              bodyPartHierarchy[selectedMainBodyPart]!.isNotEmpty)
+          // Sub Body Part
+          if (selectedMainBodyPart != null && bodyPartHierarchy[selectedMainBodyPart]!.isNotEmpty)
             DropdownButtonFormField<String>(
-              value: bodyPartHierarchy[selectedMainBodyPart!]!
-                  .contains(selectedSubBodyPart)
+              value: bodyPartHierarchy[selectedMainBodyPart!]!.contains(selectedSubBodyPart)
                   ? selectedSubBodyPart
                   : null,
+              dropdownColor: Color(0xFF000015),
+              style: TextStyle(color: Colors.white),
               items: bodyPartHierarchy[selectedMainBodyPart!]!.map((subPart) {
                 return DropdownMenuItem(
                   value: subPart,
-                  child: Text(subPart),
+                  child: Text(subPart, style: TextStyle(color: Colors.white)),
                 );
               }).toList(),
               onChanged: (value) {
@@ -474,23 +489,49 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
                   selectedSubBodyPart = value;
                 });
               },
-              decoration: InputDecoration(labelText: "Specific Muscle Group"),
+              decoration: InputDecoration(
+                labelText: "Specific Muscle Group",
+                labelStyle: TextStyle(color: Colors.white70),
+                filled: true,
+                fillColor: Color(0xFF000015),
+                border: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.white24),
+                ),
+              ),
             ),
           SizedBox(height: 8),
 
-          // DESCRIPTION
+          // Description
           TextField(
             controller: _descriptionController,
-            decoration: InputDecoration(labelText: "Description"),
+            style: TextStyle(color: Colors.white),
             maxLines: 3,
+            decoration: InputDecoration(
+              labelText: "Description",
+              labelStyle: TextStyle(color: Colors.white70),
+              filled: true,
+              fillColor: Color(0xFF000015),
+              border: OutlineInputBorder(
+                borderSide: BorderSide(color: Colors.white24),
+              ),
+            ),
           ),
           SizedBox(height: 8),
 
-          // NOTES
+          // Notes
           TextField(
             controller: _notesController,
-            decoration: InputDecoration(labelText: "Notes"),
+            style: TextStyle(color: Colors.white),
             maxLines: 3,
+            decoration: InputDecoration(
+              labelText: "Notes",
+              labelStyle: TextStyle(color: Colors.white70),
+              filled: true,
+              fillColor: Color(0xFF000015),
+              border: OutlineInputBorder(
+                borderSide: BorderSide(color: Colors.white24),
+              ),
+            ),
           ),
         ],
       ),
@@ -503,12 +544,16 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
       future: _fetchExerciseHistory(widget.exercise.id),
       builder: (context, snapshot) {
         return Scaffold(
+          backgroundColor: Color(0xFF000015),
           appBar: AppBar(
-            title: Text("Exercise Details"),
+            backgroundColor: Color(0xFF000015),
+            surfaceTintColor: Colors.transparent,
+            iconTheme: IconThemeData(color: Colors.white),
+            title: Text("Exercise Details", style: TextStyle(color: Colors.white)),
             actions: [
               // Edit / Save icon
               IconButton(
-                icon: Icon(_isEditing ? Icons.check : Icons.edit),
+                icon: Icon(_isEditing ? Icons.check : Icons.edit, color: Colors.white),
                 onPressed: () {
                   if (_isEditing) {
                     // If user was editing, save changes
@@ -521,7 +566,7 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
               ),
               // Delete icon
               IconButton(
-                icon: Icon(Icons.delete),
+                icon: Icon(Icons.delete, color: Colors.red),
                 onPressed: _deleteExercise,
               ),
             ],
