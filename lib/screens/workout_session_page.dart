@@ -27,8 +27,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   final ScrollController _scrollController = ScrollController();
 
   final TextEditingController _workoutNameController = TextEditingController();
-  final TextEditingController _workoutDescriptionController =
-  TextEditingController();
+  final TextEditingController _workoutDescriptionController = TextEditingController();
 
   @override
   void initState() {
@@ -113,7 +112,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   Future<void> _startWorkout() async {
     if (user == null) return;
 
-    // Example of cleaning out any ephemeral keys again
+    // Clean out any ephemeral keys from exercises
     List<Map<String, dynamic>> cleanedExercises = _selectedExercises.map((exercise) {
       final copy = Map<String, dynamic>.from(exercise);
       copy.remove('controllers');
@@ -133,7 +132,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     print("Created brand-new doc: ${_workoutRef!.id}");
   }
 
-
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -147,7 +145,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       }
     });
   }
-
 
   Future<void> _finishWorkout() async {
     // 1) Stop the timer
@@ -171,7 +168,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       }
     }
 
-    // 3) Clean up _selectedExercises by removing non-serializable keys (controllers and focusNodes)
+    // 3) Clean up _selectedExercises by removing non-serializable keys
     List<Map<String, dynamic>> cleanedExercises = _selectedExercises.map((exercise) {
       var cleaned = Map<String, dynamic>.from(exercise);
       cleaned.remove("controllers");
@@ -199,7 +196,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     // 5) Navigate back to the previous screen
     Navigator.pop(context);
   }
-
 
   Future<void> _cancelWorkout() async {
     _timer?.cancel();
@@ -341,7 +337,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
   }
 
-
   void _removeSet(int exerciseIndex, int setIndex) {
     final exercise = _selectedExercises[exerciseIndex];
 
@@ -350,8 +345,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
     // Dispose focus nodes
     exercise['focusNodes'][setIndex].values.forEach((n) {
-      // Optionally remove any listeners here if you kept references
-      // e.g. n.removeListener(myListener);
       n.dispose();
     });
 
@@ -362,7 +355,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       exercise['focusNodes'].removeAt(setIndex);
     });
   }
-
 
   void _updateReps(int exerciseIndex, int setIndex, int reps) {
     setState(() {
@@ -547,14 +539,18 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
+      color: Color(0xFF1A1A2E),
       child: ListTile(
         leading: showTrophy ? const Icon(Icons.emoji_events, color: Colors.amber) : null,
-        title: Text("${date.toLocal().toString().split('.')[0]}"),
+        title: Text(
+          "${date.toLocal().toString().split('.')[0]}",
+          style: TextStyle(color: Colors.white),
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Volume: ${volume.toStringAsFixed(1)}"),
-            Text(setDetails),
+            Text("Volume: ${volume.toStringAsFixed(1)}", style: TextStyle(color: Colors.white70)),
+            Text(setDetails, style: TextStyle(color: Colors.white70)),
           ],
         ),
       ),
@@ -565,8 +561,9 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     return await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Confirm Value"),
-        content: Text(message),
+        backgroundColor: Color(0xFF000015),
+        title: const Text("Confirm Value", style: TextStyle(color: Colors.white)),
+        content: Text(message, style: TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -578,8 +575,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           ),
         ],
       ),
-    ) ??
-        false;
+    ) ?? false;
   }
 
   Future<void> _verifyAndUpdateReps(int exerciseIndex, int setIndex, String valueStr) async {
@@ -615,7 +611,14 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFF000015),
       appBar: AppBar(
+        backgroundColor: Color(0xFF000015),
+        // Disable Material 3 tint and shadow
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,    // If on Flutter 3.7+, also disable scrolled elevation
+        shadowColor: Colors.transparent,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -634,11 +637,15 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextField(
-              decoration: const InputDecoration(labelText: 'Workout Name'),
+              decoration: const InputDecoration(
+                labelText: 'Workout Name',
+              ),
               controller: _workoutNameController,
             ),
             TextField(
-              decoration: const InputDecoration(labelText: 'Description'),
+              decoration: const InputDecoration(
+                labelText: 'Description',
+              ),
               controller: _workoutDescriptionController,
             ),
             const SizedBox(height: 20),

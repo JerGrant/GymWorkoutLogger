@@ -46,8 +46,11 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Color(0xFF000015),
       appBar: AppBar(
-        title: Text('Select Exercises'),
+        backgroundColor: Color(0xFF000015),
+        surfaceTintColor: Colors.transparent,
+        title: Text('Select Exercises', style: TextStyle(color: Colors.white)),
       ),
       body: Column(
         children: [
@@ -57,9 +60,13 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
             child: TextField(
               decoration: InputDecoration(
                 labelText: "Search Exercises",
-                prefixIcon: Icon(Icons.search),
+                labelStyle: TextStyle(color: Colors.white70),
+                prefixIcon: Icon(Icons.search, color: Colors.white70),
+                filled: true,
+                fillColor: Color(0xFF000015),
                 border: OutlineInputBorder(),
               ),
+              style: TextStyle(color: Colors.white),
               onChanged: (value) {
                 setState(() {
                   searchQuery = value;
@@ -74,9 +81,14 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
             child: DropdownButtonFormField<String>(
               decoration: InputDecoration(
                 labelText: "Sort By",
+                labelStyle: TextStyle(color: Colors.white70),
+                filled: true,
+                fillColor: Color(0xFF000015),
                 border: OutlineInputBorder(),
               ),
               value: sortBy,
+              dropdownColor: Color(0xFF000015),
+              style: TextStyle(color: Colors.white),
               items: ["Name", "Category", "Body Part"].map((String option) {
                 return DropdownMenuItem<String>(
                   value: option,
@@ -167,7 +179,7 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
                           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                           child: Text(
                             entry.key,
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
                         ),
                         // Items in this group
@@ -175,24 +187,23 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
                           // If data is in selectedExercises, it's "checked"
                           bool isSelected = selectedExercises.any((ex) => ex['id'] == data['id']);
                           return CheckboxListTile(
-                            title: Text(data['name'] ?? 'Unknown'),
+                            title: Text(
+                              data['name'] ?? 'Unknown',
+                              style: TextStyle(color: Colors.white),
+                            ),
                             subtitle: Text(
-                              "Category: ${data['category'] ?? 'N/A'}, "
-                                  "Body Part: ${data['bodyPart'] ?? 'N/A'}",
+                              "Category: ${data['category'] ?? 'N/A'}, Body Part: ${data['bodyPart'] ?? 'N/A'}",
+                              style: TextStyle(color: Colors.white70),
                             ),
                             value: isSelected,
                             onChanged: (bool? value) {
                               setState(() {
                                 if (value == true) {
-                                  // Only add if not already in list
-                                  bool alreadySelected = selectedExercises.any(
-                                        (ex) => ex['id'] == data['id'],
-                                  );
+                                  bool alreadySelected = selectedExercises.any((ex) => ex['id'] == data['id']);
                                   if (!alreadySelected) {
                                     selectedExercises.add(data);
                                   }
                                 } else {
-                                  // Uncheck => remove from list
                                   selectedExercises.removeWhere((ex) => ex['id'] == data['id']);
                                 }
                               });
@@ -214,18 +225,20 @@ class _ExerciseSelectionModalState extends State<ExerciseSelectionModal> {
         mainAxisSize: MainAxisSize.min,
         children: [
           FloatingActionButton(
-            heroTag: "fabCreateExercise", // Unique tag
+            heroTag: "fabCreateExercise",
             onPressed: _createNewExercise,
+            backgroundColor: Color(0xFF007AFF),
             child: Icon(Icons.add),
             tooltip: 'Create New Exercise',
           ),
           SizedBox(height: 10),
           FloatingActionButton(
-            heroTag: "fabConfirmSelection", // Unique tag
+            heroTag: "fabConfirmSelection",
             onPressed: () {
               widget.onExercisesSelected(selectedExercises);
               Navigator.pop(context);
             },
+            backgroundColor: Color(0xFF007AFF),
             child: Icon(Icons.check),
           ),
         ],
