@@ -553,7 +553,7 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
             actions: [
               // Edit / Save icon
               IconButton(
-                icon: Icon(_isEditing ? Icons.check : Icons.edit, color: Colors.white),
+                icon: Icon(_isEditing ? Icons.check : Icons.edit, color: Color(0xFF007AFF)),
                 onPressed: () {
                   if (_isEditing) {
                     // If user was editing, save changes
