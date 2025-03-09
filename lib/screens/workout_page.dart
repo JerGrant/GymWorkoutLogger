@@ -191,7 +191,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
           barRods: [
             BarChartRodData(
               toY: count.toDouble(),
-              color: Colors.purple,
+              color: Color(0xFF007AFF),
               width: 16,
               borderRadius: BorderRadius.circular(4),
             ),
