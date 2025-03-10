@@ -1,11 +1,12 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';  // Make sure you have provider in pubspec.yaml
-import 'screens/sign_in_page.dart';
-import 'screens/home_page.dart';
+import 'package:provider/provider.dart';
+import 'screens/sign_in_page.dart'; // Ensure this file exists
+import 'screens/home_page.dart'; // Ensure HomePage exists
 import 'theme/app_theme.dart';
-import 'theme/theme_provider.dart';        // Updated ThemeProvider with SharedPreferences support
+import 'theme/theme_provider.dart';
 import 'package:lottie/lottie.dart';
 
 void main() async {
@@ -20,15 +21,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => ThemeProvider(), // Loads stored theme preference automatically
+      create: (_) => ThemeProvider(),
       child: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, child) {
+        builder: (context, themeProvider, _) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Gym Workout Logger',
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
-            themeMode: themeProvider.currentTheme, // Uses persisted theme mode
+            themeMode: themeProvider.currentTheme,
             initialRoute: '/splash',
             routes: {
               '/splash': (context) => const SplashScreen(),
@@ -43,28 +44,37 @@ class MyApp extends StatelessWidget {
 }
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  double _progress = 0.0;
+
   @override
   void initState() {
     super.initState();
-    _navigateToNextScreen();
+    _simulateProgress();
   }
 
-  Future<void> _navigateToNextScreen() async {
-    await Future.delayed(const Duration(seconds: 3));
-    Navigator.pushReplacementNamed(context, '/');
+  void _simulateProgress() {
+    Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      setState(() {
+        _progress += 0.033;
+        if (_progress >= 1.0) {
+          timer.cancel();
+          Navigator.pushReplacementNamed(context, '/');
+        }
+      });
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Uses dynamic theme color
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -83,8 +93,13 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
             const SizedBox(height: 40),
-            CircularProgressIndicator(
-              color: Theme.of(context).colorScheme.onPrimary,
+            SizedBox(
+              width: 200,
+              child: LinearProgressIndicator(
+                value: _progress,
+                backgroundColor: Theme.of(context).dividerColor,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
           ],
         ),
