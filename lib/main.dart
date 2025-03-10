@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';  // Make sure you have provider in pubs
 import 'screens/sign_in_page.dart';
 import 'screens/home_page.dart';
 import 'theme/app_theme.dart';
-import 'theme/theme_provider.dart';        // We'll show theme_provider below
+import 'theme/theme_provider.dart';        // Updated ThemeProvider with SharedPreferences support
 import 'package:lottie/lottie.dart';
 
 void main() async {
@@ -20,16 +20,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => ThemeProvider(), // See theme_provider.dart below
+      create: (_) => ThemeProvider(), // Loads stored theme preference automatically
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Gym Workout Logger',
-            // Our custom light and dark themes from app_theme.dart
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
-            themeMode: themeProvider.currentTheme, // toggles between light/dark
+            themeMode: themeProvider.currentTheme, // Uses persisted theme mode
             initialRoute: '/splash',
             routes: {
               '/splash': (context) => const SplashScreen(),
@@ -65,12 +64,11 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Uses dynamic theme color
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Lottie Animation
             Lottie.asset(
               'lib/assets/BlueDumbbell.json',
               width: 200,

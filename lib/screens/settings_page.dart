@@ -26,25 +26,23 @@ class SettingsPage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         children: [
           ListTile(
-            leading:
-            Icon(Icons.account_circle, color: Theme.of(context).iconTheme.color),
+            leading: Icon(Icons.account_circle, color: Theme.of(context).iconTheme.color),
             title: Text(
               'Account Settings',
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             onTap: () {},
           ),
-          Divider(color: Colors.white24),
+          Divider(color: Theme.of(context).dividerColor),  // Updated divider color
           ListTile(
-            leading:
-            Icon(Icons.notifications, color: Theme.of(context).iconTheme.color),
+            leading: Icon(Icons.notifications, color: Theme.of(context).iconTheme.color),
             title: Text(
               'Notification Preferences',
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             onTap: () {},
           ),
-          Divider(color: Colors.white24),
+          Divider(color: Theme.of(context).dividerColor),  // Updated divider color
           ListTile(
             leading: Icon(Icons.privacy_tip, color: Theme.of(context).iconTheme.color),
             title: Text(
@@ -53,7 +51,7 @@ class SettingsPage extends StatelessWidget {
             ),
             onTap: () {},
           ),
-          Divider(color: Colors.white24),
+          Divider(color: Theme.of(context).dividerColor),  // Updated divider color
           ListTile(
             leading: Icon(Icons.color_lens, color: Theme.of(context).iconTheme.color),
             title: Text(
@@ -71,7 +69,7 @@ class SettingsPage extends StatelessWidget {
               themeProvider.toggleTheme();
             },
           ),
-          Divider(color: Colors.white24),
+          Divider(color: Theme.of(context).dividerColor),  // Updated divider color
           ListTile(
             leading: Icon(Icons.logout, color: Theme.of(context).iconTheme.color),
             title: Text(
