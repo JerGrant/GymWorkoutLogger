@@ -40,10 +40,10 @@ class _SignInPageState extends State<SignInPage> {
       );
 
       await FirebaseAuth.instance.signInWithCredential(credential);
-      final user = _auth.currentUser;
+      final user = FirebaseAuth.instance.currentUser;
 
       if (user != null) {
-        final doc = await _db.collection('users').doc(user.uid).get();
+        final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
         if (!doc.exists || !doc.data()!.containsKey('progressPictures')) {
           _promptUploadPicture(user.uid);
         }
@@ -92,10 +92,10 @@ class _SignInPageState extends State<SignInPage> {
 
     try {
       String filePath = 'progress_pictures/$userId/${DateTime.now().millisecondsSinceEpoch}.jpg';
-      TaskSnapshot snapshot = await _storage.ref(filePath).putFile(file);
+      TaskSnapshot snapshot = await FirebaseStorage.instance.ref(filePath).putFile(file);
       String downloadUrl = await snapshot.ref.getDownloadURL();
 
-      await _db.collection('users').doc(userId).set({
+      await FirebaseFirestore.instance.collection('users').doc(userId).set({
         'progressPictures': FieldValue.arrayUnion([{
           'url': downloadUrl,
           'timestamp': FieldValue.serverTimestamp(),
@@ -107,64 +107,64 @@ class _SignInPageState extends State<SignInPage> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        color: Theme.of(context).scaffoldBackgroundColor, // Updated from hardcoded Color(0xFF000015)
+        color: Theme.of(context).scaffoldBackgroundColor,
         child: Center(
           child: Padding(
-            padding: EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Blue Dumbbell Image
                 Image.asset(
-                  'lib/assets/BlueDumbbell.png', // Ensure this file exists in your assets
-                  height: 120, // Adjust size as needed
+                  'lib/assets/BlueDumbbell.png',
+                  height: 120,
                 ),
-                SizedBox(height: 20),
-                // Welcome Text
+                const SizedBox(height: 20),
                 Text(
-                  'Welcome Back to [APP NAME]!',
+                  'Welcome Back to Gym Workout Logger!',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).textTheme.titleLarge?.color ?? Colors.white,
                   ),
+                  textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 20),
-                // Error Message (If any)
+                const SizedBox(height: 20),
                 if (_errorMessage != null)
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Text(
-                      _errorMessage!,
-                      style: TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
-                    ),
+                  Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
                   ),
-                SizedBox(height: 10),
-                // Google Sign-In Button
+                const SizedBox(height: 30),
                 _isLoading
-                    ? CircularProgressIndicator(color: Theme.of(context).colorScheme.onPrimary)
+                    ? SizedBox(
+                  width: 200,
+                  child: LinearProgressIndicator(
+                    backgroundColor: Theme.of(context).dividerColor,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                )
                     : ElevatedButton(
                   onPressed: _signInWithGoogle,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.login, color: Theme.of(context).colorScheme.onPrimary),
-                      SizedBox(width: 10),
-                      Text('Sign In with Google'),
+                      const SizedBox(width: 10),
+                      const Text('Sign In with Google'),
                     ],
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary, // Updated Button Color
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary, // Text/Icon color
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30), // Rounded button
-                    ),
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   ),
                 ),
               ],
