@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/theme_provider.dart';
+import '../providers/unit_provider.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -42,10 +43,25 @@ class SettingsPage extends StatelessWidget {
             title: Text('Light / Dark Mode', style: Theme.of(context).textTheme.bodyLarge),
             trailing: Switch(
               value: isDarkMode,
-              onChanged: (value) {
+              onChanged: (_) {
                 themeProvider.toggleTheme();
               },
             ),
+          ),
+          Divider(color: Theme.of(context).dividerColor),
+          Consumer<UnitProvider>(
+            builder: (context, unitProvider, _) {
+              return ListTile(
+                leading: Icon(Icons.fitness_center, color: Theme.of(context).iconTheme.color),
+                title: Text('Use Kilograms (kg) \ninstead of Pounds (Ibs)', style: Theme.of(context).textTheme.bodyLarge),
+                trailing: Switch(
+                  value: unitProvider.isKg,
+                  onChanged: (value) {
+                    unitProvider.updateUnitPreference(value);
+                  },
+                ),
+              );
+            },
           ),
           Divider(color: Theme.of(context).dividerColor),
           ListTile(

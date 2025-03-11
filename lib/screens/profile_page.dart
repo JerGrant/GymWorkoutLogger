@@ -5,6 +5,10 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:gymworkoutlogger/screens/settings_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+// Added imports for unit conversion support.
+import 'package:provider/provider.dart';
+import 'package:gymworkoutlogger/providers/unit_provider.dart';
+import 'package:gymworkoutlogger/utils/unit_converter.dart';
 
 class ProfilePage extends StatefulWidget {
   @override
@@ -132,6 +136,7 @@ class _ProfilePageState extends State<ProfilePage> {
           _cityController.text = city;
           _feetController.text = feet.toString();
           _inchesController.text = inches.toString();
+          // When loading, assume the stored weight is in lbs.
           _weightController.text = weight.toString();
         });
       }
@@ -221,6 +226,13 @@ class _ProfilePageState extends State<ProfilePage> {
     }
     setState(() => isSaving = true);
     try {
+      // Get the current unit preference.
+      final unitProvider = Provider.of<UnitProvider>(context, listen: false);
+      double enteredWeight = double.tryParse(_weightController.text) ?? 0.0;
+      // If the user entered weight in kg, convert it to lbs for storage.
+      if (unitProvider.isKg) {
+        enteredWeight = UnitConverter.kgToLbs(enteredWeight);
+      }
       await _db.collection('users').doc(_user!.uid).set({
         'firstName': _firstNameController.text,
         'lastName': _lastNameController.text,
@@ -228,7 +240,7 @@ class _ProfilePageState extends State<ProfilePage> {
         'state': selectedState,
         'feet': int.tryParse(_feetController.text) ?? 0,
         'inches': int.tryParse(_inchesController.text) ?? 0,
-        'weight': double.tryParse(_weightController.text) ?? 0.0,
+        'weight': enteredWeight,
       }, SetOptions(merge: true));
       if (mounted) {
         setState(() => isSaving = false);
@@ -352,9 +364,16 @@ class _ProfilePageState extends State<ProfilePage> {
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 6),
-        Text(
-          "Weight: $weight lbs",
-          style: Theme.of(context).textTheme.bodyMedium,
+        // Use Consumer to show weight based on the current unit preference.
+        Consumer<UnitProvider>(
+          builder: (context, unitProvider, child) {
+            double displayWeight = unitProvider.isKg ? UnitConverter.lbsToKg(weight) : weight;
+            String unitLabel = unitProvider.isKg ? "kg" : "lbs";
+            return Text(
+              "Weight: ${displayWeight.toStringAsFixed(2)} $unitLabel",
+              style: Theme.of(context).textTheme.bodyMedium,
+            );
+          },
         ),
       ],
     );
@@ -397,10 +416,15 @@ class _ProfilePageState extends State<ProfilePage> {
           decoration: const InputDecoration(labelText: "Inches"),
           keyboardType: TextInputType.number,
         ),
-        TextField(
-          controller: _weightController,
-          decoration: const InputDecoration(labelText: "Weight (lbs)"),
-          keyboardType: TextInputType.number,
+        // Wrap the weight field in a Consumer to dynamically update the label.
+        Consumer<UnitProvider>(
+          builder: (context, unitProvider, child) {
+            return TextField(
+              controller: _weightController,
+              decoration: InputDecoration(labelText: "Weight (${unitProvider.isKg ? 'kg' : 'lbs'})"),
+              keyboardType: TextInputType.number,
+            );
+          },
         ),
       ],
     );

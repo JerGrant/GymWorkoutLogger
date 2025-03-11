@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:provider/provider.dart';
+import 'package:gymworkoutlogger/providers/unit_provider.dart';
+import 'package:gymworkoutlogger/utils/unit_converter.dart';
 
 import 'package:gymworkoutlogger/screens/exercise_selection_modal.dart';
 
@@ -163,10 +166,15 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         }
         if (weightCtrl != null) {
           double w = double.tryParse(weightCtrl.text) ?? 0.0;
+          final unitProvider = Provider.of<UnitProvider>(context, listen: false);
+          if (unitProvider.isKg) {
+            w = UnitConverter.kgToLbs(w);  // Convert from kg to lbs for storage
+          }
           _updateWeight(i, j, w);
         }
       }
     }
+
 
     // 3) Clean up _selectedExercises by removing non-serializable keys
     List<Map<String, dynamic>> cleanedExercises = _selectedExercises.map((exercise) {
@@ -300,7 +308,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         if (!newFocusNodes['reps']!.hasFocus) {
           _verifyAndUpdateReps(
             exerciseIndex,
-            newSetIndex, // Use captured index
+            newSetIndex,
             newControllers['reps']!.text,
           );
         }
@@ -313,7 +321,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         if (!newFocusNodes['weight']!.hasFocus) {
           _verifyAndUpdateWeight(
             exerciseIndex,
-            newSetIndex, // Use captured index
+            newSetIndex,
             newControllers['weight']!.text,
           );
         }
@@ -539,7 +547,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
-      color: Theme.of(context).cardColor, // Updated
+      color: Theme.of(context).cardColor,
       child: ListTile(
         leading: showTrophy ? const Icon(Icons.emoji_events, color: Colors.amber) : null,
         title: Text(
@@ -561,7 +569,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     return await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Updated from Color(0xFF000015)
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         title: Text("Confirm Value", style: (Theme.of(context).textTheme.bodyMedium ?? TextStyle()).copyWith(color: Theme.of(context).textTheme.bodyMedium?.color)),
         content: Text(message, style: (Theme.of(context).textTheme.bodyMedium ?? TextStyle()).copyWith(color: Theme.of(context).hintColor)),
         actions: [
@@ -595,6 +603,12 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
   Future<void> _verifyAndUpdateWeight(int exerciseIndex, int setIndex, String valueStr) async {
     double weight = double.tryParse(valueStr) ?? 0.0;
+    // Get current unit preference.
+    final unitProvider = Provider.of<UnitProvider>(context, listen: false);
+    // If using kg, convert the entered value (assumed to be kg) to lbs.
+    if (unitProvider.isKg) {
+      weight = UnitConverter.kgToLbs(weight);
+    }
     if (weight > 500) {
       bool confirmed = await _showVerificationDialog("You entered over 500 lbs. Are you sure?");
       if (!confirmed) {
@@ -611,13 +625,12 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Updated
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor, // Updated
-        // Disable Material 3 tint and shadow
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        scrolledUnderElevation: 0, // If on Flutter 3.7+, also disable scrolled elevation
+        scrolledUnderElevation: 0,
         shadowColor: Colors.transparent,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -744,21 +757,27 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                               ),
                                             ),
                                           if (set.containsKey('weight'))
-                                            SizedBox(
-                                              width: 70,
-                                              child: TextField(
-                                                decoration: const InputDecoration(labelText: "Weight (lbs)"),
-                                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                controller: controllers['weight'],
-                                                focusNode: focusNodes['weight'],
-                                                onSubmitted: (value) {
-                                                  _verifyAndUpdateWeight(
-                                                    exerciseIndex,
-                                                    setIndex,
-                                                    value,
-                                                  );
-                                                },
-                                              ),
+                                            Consumer<UnitProvider>(
+                                              builder: (context, unitProvider, child) {
+                                                return SizedBox(
+                                                  width: 70,
+                                                  child: TextField(
+                                                    decoration: InputDecoration(
+                                                      labelText: "Weight (${unitProvider.isKg ? 'kg' : 'lbs'})",
+                                                    ),
+                                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                    controller: controllers['weight'],
+                                                    focusNode: focusNodes['weight'],
+                                                    onSubmitted: (value) {
+                                                      _verifyAndUpdateWeight(
+                                                        exerciseIndex,
+                                                        setIndex,
+                                                        value,
+                                                      );
+                                                    },
+                                                  ),
+                                                );
+                                              },
                                             ),
                                           if (set.containsKey('duration'))
                                             SizedBox(

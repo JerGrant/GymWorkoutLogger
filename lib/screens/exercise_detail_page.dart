@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+// Added imports for unit conversion support.
+import 'package:provider/provider.dart';
+import 'package:gymworkoutlogger/providers/unit_provider.dart';
+import 'package:gymworkoutlogger/utils/unit_converter.dart';
 
 class ExerciseDetailsPage extends StatefulWidget {
   final DocumentSnapshot exercise;
@@ -305,7 +309,6 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           // Basic info
           Text(
             "Name: $exerciseName",
-            // Updated to use theme text style
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 8),
@@ -329,7 +332,6 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
             Text("No data found.", style: Theme.of(context).textTheme.bodyMedium)
           else
             Card(
-              // Updated to use theme card color
               color: Theme.of(context).cardColor,
               child: ListTile(
                 leading: Icon(Icons.star, color: Colors.amber),
@@ -372,25 +374,58 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
     );
   }
 
-  /// Helper to build text showing volume & set details
+  /// Helper to build text showing volume & set details with unit conversion
   Widget _buildEntrySubtitle(Map<String, dynamic> entry) {
     double volume = entry['volume'] ?? 0.0;
     List sets = entry['sets'] ?? [];
 
-    String setDetails = sets.asMap().entries.map((e) {
-      int setNum = e.key + 1;
-      var set = e.value;
-      var weight = set.containsKey('weight') ? set['weight'] : '-';
-      var reps = set.containsKey('reps') ? set['reps'] : '-';
-      return "Set $setNum: ${weight}lbs x ${reps} reps";
-    }).join("\n");
+    // Wrap in Consumer to dynamically update based on unit preference
+    return Consumer<UnitProvider>(
+      builder: (context, unitProvider, child) {
+        String setDetails = sets.asMap().entries.map((e) {
+          int setNum = e.key + 1;
+          var set = e.value;
+          double weight = 0.0;
+          if (set.containsKey('weight')) {
+            var rawWeight = set['weight'];
+            if (rawWeight is int) {
+              weight = rawWeight.toDouble();
+            } else if (rawWeight is double) {
+              weight = rawWeight;
+            } else {
+              weight = double.tryParse(rawWeight.toString()) ?? 0.0;
+            }
+          }
+          // Convert stored weight (in lbs) to kg if needed.
+          if (unitProvider.isKg) {
+            weight = UnitConverter.lbsToKg(weight);
+          }
+          String unitLabel = unitProvider.isKg ? "kg" : "lbs";
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text("Volume: ${volume.toStringAsFixed(1)}", style: Theme.of(context).textTheme.bodySmall),
-        Text(setDetails, style: Theme.of(context).textTheme.bodySmall),
-      ],
+          int reps = 0;
+          if (set.containsKey('reps')) {
+            if (set['reps'] is int) {
+              reps = set['reps'];
+            } else {
+              reps = int.tryParse(set['reps'].toString()) ?? 0;
+            }
+          }
+          return "Set $setNum: ${weight.toStringAsFixed(2)} $unitLabel x ${reps} reps";
+        }).join("\n");
+
+        // Convert overall volume if needed (volume is stored in lbs*reps).
+        double displayVolume = volume;
+        if (unitProvider.isKg) {
+          displayVolume = UnitConverter.lbsToKg(volume);
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Volume: ${displayVolume.toStringAsFixed(1)}", style: Theme.of(context).textTheme.bodySmall),
+            Text(setDetails, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        );
+      },
     );
   }
 
@@ -408,10 +443,8 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
               labelText: "Exercise Name",
               labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor),
               filled: true,
-              // Updated to use scaffold background color
               fillColor: Theme.of(context).scaffoldBackgroundColor,
               border: OutlineInputBorder(
-                // Updated border color
                 borderSide: BorderSide(color: Theme.of(context).dividerColor),
               ),
             ),
@@ -421,7 +454,6 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
           // Category
           DropdownButtonFormField(
             value: selectedCategory,
-            // Updated to use scaffold background color
             dropdownColor: Theme.of(context).scaffoldBackgroundColor,
             style: Theme.of(context).textTheme.bodyMedium,
             items: categories.map((category) {
@@ -549,16 +581,16 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
       future: _fetchExerciseHistory(widget.exercise.id),
       builder: (context, snapshot) {
         return Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Updated from hardcoded Color(0xFF000015)
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           appBar: AppBar(
-            backgroundColor: Theme.of(context).appBarTheme.backgroundColor, // Updated
+            backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
             surfaceTintColor: Colors.transparent,
-            iconTheme: Theme.of(context).appBarTheme.iconTheme, // Updated
-            title: Text("Exercise Details", style: Theme.of(context).appBarTheme.titleTextStyle), // Updated
+            iconTheme: Theme.of(context).appBarTheme.iconTheme,
+            title: Text("Exercise Details", style: Theme.of(context).appBarTheme.titleTextStyle),
             actions: [
               // Edit / Save icon
               IconButton(
-                icon: Icon(_isEditing ? Icons.check : Icons.edit, color: Theme.of(context).colorScheme.primary), // Updated
+                icon: Icon(_isEditing ? Icons.check : Icons.edit, color: Theme.of(context).colorScheme.primary),
                 onPressed: () {
                   if (_isEditing) {
                     // If user was editing, save changes
@@ -571,13 +603,13 @@ class _ExerciseDetailsPageState extends State<ExerciseDetailsPage> {
               ),
               // Delete icon
               IconButton(
-                icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error), // Updated
+                icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
                 onPressed: _deleteExercise,
               ),
             ],
           ),
           body: snapshot.connectionState == ConnectionState.waiting
-              ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary)) // Updated
+              ? Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary))
               : _isEditing
               ? _buildEditView()
               : _buildReadOnlyView(snapshot),

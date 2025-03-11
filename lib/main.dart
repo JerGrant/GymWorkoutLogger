@@ -1,12 +1,13 @@
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:gymworkoutlogger/screens/settings_page.dart';
 import 'package:provider/provider.dart';
-import 'screens/sign_in_page.dart'; // Ensure this file exists
-import 'screens/home_page.dart'; // Ensure HomePage exists
+import 'screens/sign_in_page.dart';
+import 'screens/home_page.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_provider.dart';
+import 'providers/unit_provider.dart';
 import 'package:lottie/lottie.dart';
 
 void main() async {
@@ -20,8 +21,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => UnitProvider()),
+      ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
           return MaterialApp(
@@ -35,6 +39,7 @@ class MyApp extends StatelessWidget {
               '/splash': (context) => const SplashScreen(),
               '/': (context) => const SignInPage(),
               '/home': (context) => const HomePage(),
+              '/settings': (context) => const SettingsPage(), // <-- add or confirm this route clearly
             },
           );
         },
