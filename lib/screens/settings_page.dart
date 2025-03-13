@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/theme_provider.dart';
 import '../providers/unit_provider.dart';
+import '../providers/accessibility_provider.dart'; // <-- import the new provider
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -58,6 +59,22 @@ class SettingsPage extends StatelessWidget {
                   value: unitProvider.isKg,
                   onChanged: (value) {
                     unitProvider.updateUnitPreference(value);
+                  },
+                ),
+              );
+            },
+          ),
+          Divider(color: Theme.of(context).dividerColor),
+          // New Accessibility Toggle
+          Consumer<AccessibilityProvider>(
+            builder: (context, accessibilityProvider, _) {
+              return ListTile(
+                leading: Icon(Icons.accessibility, color: Theme.of(context).iconTheme.color),
+                title: Text('Enable Large Text Mode', style: Theme.of(context).textTheme.bodyLarge),
+                trailing: Switch(
+                  value: accessibilityProvider.isLargeText,
+                  onChanged: (value) {
+                    accessibilityProvider.toggleLargeText(value);
                   },
                 ),
               );

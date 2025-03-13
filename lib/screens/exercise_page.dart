@@ -17,7 +17,7 @@ class NoGlowScrollBehavior extends ScrollBehavior {
 }
 
 class _ExercisePageState extends State<ExercisePage> {
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   String searchQuery = "";
   String selectedSort = "Alphabetical";
   String? selectedCategory;
@@ -64,22 +64,28 @@ class _ExercisePageState extends State<ExercisePage> {
       String name = data['name']?.toString().toLowerCase() ?? "";
       String category = data['category']?.toString() ?? "";
       String bodyPart = data['bodyPart']?.toString() ?? "";
+
       bool matchesSearch = name.contains(searchQuery.toLowerCase());
       bool matchesCategory = selectedCategory == null || category == selectedCategory;
       bool matchesBodyPart = selectedBodyPart == null ||
           bodyPart == selectedBodyPart ||
           (bodyPartHierarchy[selectedBodyPart]?.contains(bodyPart) ?? false);
+
       return matchesSearch && matchesCategory && matchesBodyPart;
     }).toList();
   }
 
   /// Groups exercises by selected sort option
-  Map<String, List<QueryDocumentSnapshot<Object?>>>
-  groupByField(List<QueryDocumentSnapshot<Object?>> exercises, String field) {
+  Map<String, List<QueryDocumentSnapshot<Object?>>> groupByField(
+      List<QueryDocumentSnapshot<Object?>> exercises,
+      String field,
+      ) {
     Map<String, List<QueryDocumentSnapshot<Object?>>> grouped = {};
     for (var exercise in exercises) {
       var data = exercise.data() as Map<String, dynamic>? ?? {};
       String key = data[field]?.toString().trim() ?? "Uncategorized";
+
+      // For alphabetical grouping, use the first letter of the name
       if (field == "name" && key.isNotEmpty) {
         key = key[0].toUpperCase();
       }
@@ -148,7 +154,7 @@ class _ExercisePageState extends State<ExercisePage> {
                 prefixIcon: Icon(Icons.search, color: Theme.of(context).iconTheme.color),
                 filled: true,
                 fillColor: Theme.of(context).scaffoldBackgroundColor,
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
               style: Theme.of(context).textTheme.bodyMedium,
               onChanged: (value) {
@@ -159,17 +165,17 @@ class _ExercisePageState extends State<ExercisePage> {
             ),
           ),
 
-          /// Sorting Dropdown
+          /// Sort By (Full width)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: DropdownButtonFormField<String>(
               value: selectedSort,
-              items: sortOptions
-                  .map((sort) => DropdownMenuItem(
-                value: sort,
-                child: Text(sort, style: Theme.of(context).textTheme.bodyMedium),
-              ))
-                  .toList(),
+              items: sortOptions.map((sort) {
+                return DropdownMenuItem(
+                  value: sort,
+                  child: Text(sort, style: Theme.of(context).textTheme.bodyMedium),
+                );
+              }).toList(),
               onChanged: (value) {
                 setState(() {
                   selectedSort = value!;
@@ -182,76 +188,79 @@ class _ExercisePageState extends State<ExercisePage> {
             ),
           ),
 
-          /// Category & Body Part Filters
+          /// Category (Full width)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: selectedCategory,
-                    items: [
-                      DropdownMenuItem(
-                          value: null,
-                          child: Text("All Categories", style: Theme.of(context).textTheme.bodyMedium)),
-                      ...categories.map((category) => DropdownMenuItem(
-                        value: category,
-                        child: Text(category, style: Theme.of(context).textTheme.bodyMedium),
-                      )),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        selectedCategory = value;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      labelText: "Category",
-                      labelStyle: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
+            child: DropdownButtonFormField<String>(
+              value: selectedCategory,
+              items: [
+                DropdownMenuItem(
+                  value: null,
+                  child: Text("All Categories", style: Theme.of(context).textTheme.bodyMedium),
                 ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    value: selectedBodyPart,
-                    items: [
-                      DropdownMenuItem(
-                          value: null,
-                          child: Text("All Body Parts", style: Theme.of(context).textTheme.bodyMedium)),
-                      ...bodyPartHierarchy.entries.expand((entry) {
-                        String parent = entry.key;
-                        List<String> subcategories = entry.value;
-                        return [
-                          DropdownMenuItem(
-                            value: parent,
-                            child: Text(parent,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(fontWeight: FontWeight.bold)),
-                          ),
-                          ...subcategories.map((subcategory) => DropdownMenuItem(
-                            value: subcategory,
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 16.0),
-                              child: Text("— $subcategory", style: Theme.of(context).textTheme.bodyMedium),
-                            ),
-                          )),
-                        ];
-                      }).toList(),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        selectedBodyPart = value;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      labelText: "Body Part",
-                      labelStyle: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                ),
+                ...categories.map((category) => DropdownMenuItem(
+                  value: category,
+                  child: Text(category, style: Theme.of(context).textTheme.bodyMedium),
+                )),
               ],
+              onChanged: (value) {
+                setState(() {
+                  selectedCategory = value;
+                });
+              },
+              decoration: InputDecoration(
+                labelText: "Category",
+                labelStyle: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+          ),
+
+          /// Body Part (Full width)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: DropdownButtonFormField<String>(
+              value: selectedBodyPart,
+              items: [
+                DropdownMenuItem(
+                  value: null,
+                  child: Text("All Body Parts", style: Theme.of(context).textTheme.bodyMedium),
+                ),
+                ...bodyPartHierarchy.entries.expand((entry) {
+                  String parent = entry.key;
+                  List<String> subcategories = entry.value;
+                  return [
+                    DropdownMenuItem(
+                      value: parent,
+                      child: Text(
+                        parent,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    ...subcategories.map((subcategory) => DropdownMenuItem(
+                      value: subcategory,
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 16.0),
+                        child: Text(
+                          "— $subcategory",
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                    )),
+                  ];
+                }).toList(),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  selectedBodyPart = value;
+                });
+              },
+              decoration: InputDecoration(
+                labelText: "Body Part",
+                labelStyle: Theme.of(context).textTheme.bodyMedium,
+              ),
             ),
           ),
 
@@ -267,22 +276,26 @@ class _ExercisePageState extends State<ExercisePage> {
               builder: (context, snapshot) {
                 if (!snapshot.hasData) {
                   return Center(
-                      child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary));
+                    child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary),
+                  );
                 }
+
                 var exercises = applyFilters(snapshot.data!.docs);
                 if (exercises.isEmpty) {
                   return Center(
                     child: Text("No exercises found.", style: Theme.of(context).textTheme.bodyMedium),
                   );
                 }
-                Map<String, List<QueryDocumentSnapshot<Object?>>> groupedExercises =
-                groupByField(
-                    exercises,
-                    selectedSort == "Alphabetical"
-                        ? "name"
-                        : selectedSort == "Body Part"
-                        ? "bodyPart"
-                        : "category");
+
+                Map<String, List<QueryDocumentSnapshot<Object?>>> groupedExercises = groupByField(
+                  exercises,
+                  selectedSort == "Alphabetical"
+                      ? "name"
+                      : selectedSort == "Body Part"
+                      ? "bodyPart"
+                      : "category",
+                );
+
                 return ScrollConfiguration(
                   behavior: NoGlowScrollBehavior(),
                   child: ListView.builder(
@@ -300,18 +313,23 @@ class _ExercisePageState extends State<ExercisePage> {
                             padding: const EdgeInsets.all(8.0),
                             child: Text(
                               groupKey,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyLarge
-                                  ?.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                           ...groupedExercises[groupKey]!.map((exercise) {
                             var data = exercise.data() as Map<String, dynamic>;
                             return ListTile(
-                              title: Text(data['name'], style: Theme.of(context).textTheme.bodyLarge),
-                              subtitle: Text("${data['category']} - ${data['bodyPart']}",
-                                  style: Theme.of(context).textTheme.bodyMedium),
+                              title: Text(
+                                data['name'],
+                                style: Theme.of(context).textTheme.bodyLarge,
+                              ),
+                              subtitle: Text(
+                                "${data['category']} - ${data['bodyPart']}",
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
                               onTap: () {
                                 Navigator.push(
                                   context,

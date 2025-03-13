@@ -208,7 +208,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text("Configure Workout Days/Week"),
+          title: const Text("Configure Workout Days/Week"),
           content: StatefulBuilder(
             builder: (BuildContext context, StateSetter setStateDialog) {
               return DropdownButton<int>(
@@ -230,11 +230,11 @@ class _WorkoutPageState extends State<WorkoutPage> {
           ),
           actions: [
             TextButton(
-              child: Text("Cancel"),
+              child: const Text("Cancel"),
               onPressed: () => Navigator.of(context).pop(),
             ),
             ElevatedButton(
-              child: Text("Save"),
+              child: const Text("Save"),
               onPressed: () {
                 Navigator.of(context).pop();
                 setState(() {
@@ -255,7 +255,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
     VoidCallback? onSettingsTap,
   }) {
     return Container(
-      padding: EdgeInsets.all(12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(8),
@@ -268,20 +268,30 @@ class _WorkoutPageState extends State<WorkoutPage> {
               Expanded(
                 child: Text(
                   title,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 14, fontWeight: FontWeight.w500),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.copyWith(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ),
               if (onSettingsTap != null)
                 GestureDetector(
                   onTap: onSettingsTap,
-                  child: Icon(Icons.settings, size: 16, color: Theme.of(context).colorScheme.primary),
+                  child: Icon(
+                    Icons.settings,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
             ],
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
+            style: Theme.of(context)
+                .textTheme
+                .bodyLarge
+                ?.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -294,7 +304,11 @@ class _WorkoutPageState extends State<WorkoutPage> {
     VoidCallback? onSettingsTap,
   }) {
     return Expanded(
-      child: _buildStatCard(title: title, value: value, onSettingsTap: onSettingsTap),
+      child: _buildStatCard(
+        title: title,
+        value: value,
+        onSettingsTap: onSettingsTap,
+      ),
     );
   }
 
@@ -311,46 +325,86 @@ class _WorkoutPageState extends State<WorkoutPage> {
             MaterialPageRoute(builder: (context) => WorkoutSessionPage()),
           );
         },
-        child: Text('Start a Workout', style: TextStyle(fontSize: 18, color: Theme.of(context).colorScheme.onPrimary)),
+        child: Text(
+          'Start a Workout',
+          style: TextStyle(
+            fontSize: 18,
+            color: Theme.of(context).colorScheme.onPrimary,
+          ),
+        ),
       ),
     );
   }
 
+  /// Updated: Wrap each row of stat cards in IntrinsicHeight + crossAxisAlignment.stretch
   Widget _buildWorkoutStats() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Workout Stats", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.bold)),
-        SizedBox(height: 10),
-        Row(
-          children: [
-            _buildExpandedStatCard(title: "Total Workouts", value: "$totalWorkouts"),
-            SizedBox(width: 8),
-            _buildExpandedStatCard(title: "Workouts This Month", value: "$workoutsThisMonth"),
-          ],
+        Text(
+          "Workout Stats",
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        SizedBox(height: 8),
-        Row(
-          children: [
-            _buildExpandedStatCard(title: "Avg. Duration", value: "${avgDuration.toStringAsFixed(0)} min"),
-            SizedBox(width: 8),
-            _buildExpandedStatCard(title: "Total Time", value: "$totalDuration min"),
-          ],
+        const SizedBox(height: 10),
+
+        // First row: Total Workouts & Workouts This Month
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildExpandedStatCard(
+                title: "Total Workouts",
+                value: "$totalWorkouts",
+              ),
+              const SizedBox(width: 8),
+              _buildExpandedStatCard(
+                title: "Workouts This Month",
+                value: "$workoutsThisMonth",
+              ),
+            ],
+          ),
         ),
-        SizedBox(height: 8),
-        Row(
-          children: [
-            _buildExpandedStatCard(
-              title: "Streak",
-              value: "$currentStreak day${currentStreak == 1 ? "" : "s"}",
-              onSettingsTap: _showStreakSettingsDialog,
-            ),
-            SizedBox(width: 8),
-            _buildExpandedStatCard(
-              title: "Longest Streak",
-              value: "$longestStreak day${longestStreak == 1 ? "" : "s"}",
-            ),
-          ],
+        const SizedBox(height: 8),
+
+        // Second row: Avg. Duration & Total Time
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildExpandedStatCard(
+                title: "Avg. Duration",
+                value: "${avgDuration.toStringAsFixed(0)} min",
+              ),
+              const SizedBox(width: 8),
+              _buildExpandedStatCard(
+                title: "Total Time",
+                value: "$totalDuration min",
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Third row: Streak & Longest Streak
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildExpandedStatCard(
+                title: "Streak",
+                value: "$currentStreak day${currentStreak == 1 ? "" : "s"}",
+                onSettingsTap: _showStreakSettingsDialog,
+              ),
+              const SizedBox(width: 8),
+              _buildExpandedStatCard(
+                title: "Longest Streak",
+                value: "$longestStreak day${longestStreak == 1 ? "" : "s"}",
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -366,7 +420,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
       },
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
@@ -376,9 +430,15 @@ class _WorkoutPageState extends State<WorkoutPage> {
           children: [
             Text(
               "Favorite Workouts",
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            Icon(Icons.chevron_right, color: Theme.of(context).colorScheme.primary),
+            Icon(
+              Icons.chevron_right,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ],
         ),
       ),
@@ -389,9 +449,15 @@ class _WorkoutPageState extends State<WorkoutPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Workouts per week", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.bold)),
-        SizedBox(height: 10),
-        Container(
+        Text(
+          "Workouts per week",
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
           height: 200,
           child: BarChart(
             BarChartData(
@@ -403,8 +469,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
                 border: Border(
                   bottom: BorderSide(color: Theme.of(context).dividerColor, width: 1),
                   left: BorderSide(color: Theme.of(context).dividerColor, width: 1),
-                  right: BorderSide(color: Colors.transparent),
-                  top: BorderSide(color: Colors.transparent),
+                  right: const BorderSide(color: Colors.transparent),
+                  top: const BorderSide(color: Colors.transparent),
                 ),
               ),
               gridData: FlGridData(show: false),
@@ -417,9 +483,19 @@ class _WorkoutPageState extends State<WorkoutPage> {
                       if (value % 1 != 0) return Container();
                       final int intVal = value.toInt();
                       if (intVal >= 0 && intVal <= 10) {
-                        return Text('$intVal', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color));
+                        return Text(
+                          '$intVal',
+                          style: TextStyle(
+                            color: Theme.of(context).textTheme.bodyMedium?.color,
+                          ),
+                        );
                       } else if (intVal > 10 && intVal % 5 == 0) {
-                        return Text('$intVal', style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color));
+                        return Text(
+                          '$intVal',
+                          style: TextStyle(
+                            color: Theme.of(context).textTheme.bodyMedium?.color,
+                          ),
+                        );
                       }
                       return Container();
                     },
@@ -434,13 +510,19 @@ class _WorkoutPageState extends State<WorkoutPage> {
                     getTitlesWidget: (double value, TitleMeta meta) {
                       final index = value.toInt();
                       if (index < 0 || index >= sortedWeekDates.length) {
-                        return SizedBox.shrink();
+                        return const SizedBox.shrink();
                       }
                       final date = sortedWeekDates[index];
                       final label = DateFormat("M/d").format(date);
                       return Padding(
                         padding: const EdgeInsets.only(top: 6.0),
-                        child: Text(label, style: TextStyle(fontSize: 10, color: Theme.of(context).textTheme.bodyMedium?.color)),
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Theme.of(context).textTheme.bodyMedium?.color,
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -480,16 +562,16 @@ class _WorkoutPageState extends State<WorkoutPage> {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildStartWorkoutButton(context),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               _buildWorkoutStats(),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               _buildFavoriteWorkoutsTile(),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               _buildWeeklyChart(),
             ],
           ),

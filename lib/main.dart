@@ -8,6 +8,7 @@ import 'screens/home_page.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_provider.dart';
 import 'providers/unit_provider.dart';
+import 'providers/accessibility_provider.dart'; // <-- Import the new provider
 import 'package:lottie/lottie.dart';
 
 void main() async {
@@ -25,9 +26,10 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => UnitProvider()),
+        ChangeNotifierProvider(create: (_) => AccessibilityProvider()), // <-- Add provider here
       ],
-      child: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, _) {
+      child: Consumer2<ThemeProvider, AccessibilityProvider>(
+        builder: (context, themeProvider, accessibilityProvider, _) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Gym Workout Logger',
@@ -39,7 +41,15 @@ class MyApp extends StatelessWidget {
               '/splash': (context) => const SplashScreen(),
               '/': (context) => const SignInPage(),
               '/home': (context) => const HomePage(),
-              '/settings': (context) => const SettingsPage(), // <-- add or confirm this route clearly
+              '/settings': (context) => const SettingsPage(),
+            },
+            // Wrap the child in a MediaQuery that sets textScaleFactor based on the accessibility setting
+            builder: (context, child) {
+              double scaleFactor = accessibilityProvider.isLargeText ? 1.5 : 1.0;
+              return MediaQuery(
+                data: MediaQuery.of(context).copyWith(textScaleFactor: scaleFactor),
+                child: child!,
+              );
             },
           );
         },

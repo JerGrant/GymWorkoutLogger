@@ -5,7 +5,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:gymworkoutlogger/screens/settings_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-// Added imports for unit conversion support.
 import 'package:provider/provider.dart';
 import 'package:gymworkoutlogger/providers/unit_provider.dart';
 import 'package:gymworkoutlogger/utils/unit_converter.dart';
@@ -364,7 +363,6 @@ class _ProfilePageState extends State<ProfilePage> {
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 6),
-        // Use Consumer to show weight based on the current unit preference.
         Consumer<UnitProvider>(
           builder: (context, unitProvider, child) {
             double displayWeight = unitProvider.isKg ? UnitConverter.lbsToKg(weight) : weight;
@@ -416,7 +414,6 @@ class _ProfilePageState extends State<ProfilePage> {
           decoration: const InputDecoration(labelText: "Inches"),
           keyboardType: TextInputType.number,
         ),
-        // Wrap the weight field in a Consumer to dynamically update the label.
         Consumer<UnitProvider>(
           builder: (context, unitProvider, child) {
             return TextField(
@@ -430,7 +427,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Method to display the full profile image in a dialog.
+  // Displays the full profile image in a dialog.
   void _showFullImage() {
     showDialog(
       context: context,
@@ -452,10 +449,8 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Use the theme’s scaffold background color
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        // Use the theme’s appBar background color
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         automaticallyImplyLeading: false,
         title: Text(
@@ -463,7 +458,6 @@ class _ProfilePageState extends State<ProfilePage> {
           style: Theme.of(context).appBarTheme.titleTextStyle,
         ),
         actions: [
-          // Settings icon uses the theme’s accent color
           IconButton(
             icon: Icon(Icons.settings, color: Theme.of(context).colorScheme.primary),
             onPressed: () {
@@ -473,7 +467,6 @@ class _ProfilePageState extends State<ProfilePage> {
               );
             },
           ),
-          // Edit icon toggles between check and edit, also uses accent color
           IconButton(
             icon: Icon(
               isEditing ? Icons.check : Icons.edit,
@@ -496,7 +489,6 @@ class _ProfilePageState extends State<ProfilePage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Profile image
             GestureDetector(
               onTap: () {
                 if (isEditing) {
@@ -522,9 +514,12 @@ class _ProfilePageState extends State<ProfilePage> {
             isEditing ? _buildEditableFields() : _buildReadOnlyFields(),
             const SizedBox(height: 30),
             const Divider(),
-            // Progress Pictures section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Use a Wrap so "Progress Pictures" and "Sort" stay on one line
+            // in normal text mode, but wrap to the next line in large text mode.
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8.0,
+              runSpacing: 8.0,
               children: [
                 Text(
                   "Progress Pictures",
@@ -534,6 +529,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text("Sort: ", style: Theme.of(context).textTheme.bodyMedium),
                     DropdownButton<bool>(
@@ -541,13 +537,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       items: [
                         DropdownMenuItem(
                           value: true,
-                          child: Text("Newest to Oldest",
-                              style: Theme.of(context).textTheme.bodyMedium),
+                          child: Text("Newest to Oldest", style: Theme.of(context).textTheme.bodyMedium),
                         ),
                         DropdownMenuItem(
                           value: false,
-                          child: Text("Oldest to Newest",
-                              style: Theme.of(context).textTheme.bodyMedium),
+                          child: Text("Oldest to Newest", style: Theme.of(context).textTheme.bodyMedium),
                         ),
                       ],
                       onChanged: (value) {

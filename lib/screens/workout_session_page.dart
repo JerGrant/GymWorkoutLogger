@@ -41,8 +41,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   final ScrollController _scrollController = ScrollController();
 
   final TextEditingController _workoutNameController = TextEditingController();
-  final TextEditingController _workoutDescriptionController =
-  TextEditingController();
+  final TextEditingController _workoutDescriptionController = TextEditingController();
 
   @override
   void initState() {
@@ -185,7 +184,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   }
 
   // --- TOP TIMER LOGIC (for AppBar timer icon) ---
-
   // Utility to format mm:ss.
   String _formatMMSS(int totalSeconds) {
     final m = totalSeconds ~/ 60;
@@ -315,7 +313,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   }
 
   // --- FINISH/CANCEL WORKOUT ---
-
   Future<void> _finishWorkout() async {
     _timer?.cancel();
     print("Finishing workout with duration: $_duration");
@@ -379,7 +376,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   }
 
   // --- EXERCISE SELECTION ---
-
   Map<String, dynamic> convertExerciseFields(Map<String, dynamic> exercise) {
     List<String> fields = ['name', 'category', 'bodyPart', 'subcategory'];
     Map<String, dynamic> newExercise = Map.from(exercise);
@@ -813,7 +809,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   }
 
   // --- EXERCISE HISTORY LOGIC ---
-
   Future<Map<String, dynamic>> _fetchExerciseHistory(String exerciseId) async {
     List<Map<String, dynamic>> allEntries = [];
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -869,7 +864,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     }
 
     allEntries.sort((a, b) => b['date'].compareTo(a['date']));
-        if (bestEntry != null) {
+    if (bestEntry != null) {
       allEntries.remove(bestEntry);
     }
     final recent = allEntries.take(10).toList();
@@ -1019,46 +1014,61 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
   @override
   Widget build(BuildContext context) {
-    // We'll assume the "Add Exercise" button is using
-    // Theme.of(context).colorScheme.primary for its color.
     final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         elevation: 0,
+
+        // ------------------------------------------
+        // Single Row with spaceBetween & Flexible
+        titleSpacing: 0,
+        centerTitle: false,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Left: "Workout Session" with timer icon and remaining time.
-            Row(
-              children: [
-                const Text('Workout Session'),
-                IconButton(
-                  icon: Icon(Icons.timer, color: primaryColor),
-                  onPressed: _showTopTimerDialog,
-                  tooltip: "Show Timer Popup",
-                ),
-                ValueListenableBuilder<int>(
-                  valueListenable: _topTimerNotifier,
-                  builder: (context, value, child) {
-                    return Text(
-                      _formatMMSS(value),
-                      style: const TextStyle(fontSize: 16),
-                    );
-                  },
-                ),
-              ],
+            // Left side: "Workout Session" + Timer icon + Timer text
+            Flexible(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // "Workout Session" text (with ellipsis if too wide)
+                  Flexible(
+                    child: Text(
+                      'Workout Session',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.timer, color: primaryColor),
+                    onPressed: _showTopTimerDialog,
+                    tooltip: "Show Timer Popup",
+                  ),
+                  ValueListenableBuilder<int>(
+                    valueListenable: _topTimerNotifier,
+                    builder: (context, value, child) {
+                      return Text(
+                        _formatMMSS(value),
+                        style: const TextStyle(fontSize: 16),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
-            // Right: Main workout duration.
+
+            // Right side: "Duration: X"
             Text(
               "Duration: ${_formatDuration(_duration)}",
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
             ),
           ],
         ),
-        automaticallyImplyLeading: false,
+        // ------------------------------------------
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -1112,7 +1122,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                                     ),
                                     Text(
-                                      "${exercise['category'] ?? 'Unknown Category'} | ${exercise['bodyPart'] ?? 'Unknown Body Part'}${exercise['subcategory'] != null ? ' (${exercise['subcategory']})' : ''}",
+                                      "${exercise['category'] ?? 'Unknown Category'} | ${exercise['bodyPart'] ?? 'Unknown Body Part'}"
+                                          "${exercise['subcategory'] != null ? ' (${exercise['subcategory']})' : ''}",
                                       style: const TextStyle(color: Colors.grey),
                                     ),
                                   ],
@@ -1145,7 +1156,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                 Map<String, TextEditingController> controllers = exercise['controllers'][setIndex];
                                 Map<String, FocusNode> focusNodes = exercise['focusNodes'][setIndex];
 
-                                // For improved highlight, use a BoxDecoration with theme-based color.
                                 final bool isComplete = (set['isSetComplete'] == true);
 
                                 return Container(
@@ -1171,8 +1181,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                             children: [
                                               Checkbox(
                                                 value: set['isSetComplete'] ?? false,
-                                                onChanged: (val) =>
-                                                    _onSetCheckChanged(exerciseIndex, setIndex, val),
+                                                onChanged: (val) => _onSetCheckChanged(exerciseIndex, setIndex, val),
                                               ),
                                               Text("Set ${setIndex + 1}"),
                                             ],
@@ -1273,7 +1282,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                 children: [
                                                   Text(
-                                                    "Rest: ${_formatMMSS(set['restRemaining'] as int)}",
+                                                    "Rest: ${_formatRestMMSS(set['restRemaining'] as int)}",
                                                     style: TextStyle(
                                                       color: primaryColor,
                                                       fontWeight: FontWeight.w600,
