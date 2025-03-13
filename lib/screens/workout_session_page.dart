@@ -1,12 +1,13 @@
+import 'dart:async';
+import 'dart:math'; // For max(...)
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'dart:async';
 import 'package:provider/provider.dart';
-import 'package:gymworkoutlogger/providers/unit_provider.dart';
-import 'package:gymworkoutlogger/utils/unit_converter.dart';
 
+import 'package:gymworkoutlogger/providers/unit_provider.dart';
 import 'package:gymworkoutlogger/screens/exercise_selection_modal.dart';
+import 'package:gymworkoutlogger/utils/unit_converter.dart';
 
 class WorkoutSessionPage extends StatefulWidget {
   final Map<String, dynamic>? preloadedWorkout;
@@ -21,8 +22,18 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final User? user = FirebaseAuth.instance.currentUser;
 
+  // Main workout duration timer
   Timer? _timer;
   int _duration = 0;
+
+  // Top Timer (for the AppBar timer icon)
+  Timer? _topTimer;
+  bool _topTimerActive = false;
+  int _topTimerTotal = 120; // default total = 2 minutes (120 sec)
+  // Using a ValueNotifier so that both the AppBar and popup update in real time.
+  final ValueNotifier<int> _topTimerNotifier = ValueNotifier<int>(120);
+
+  // Basic workout info
   String _workoutName = "Untitled Workout";
   String _workoutDescription = "";
   DocumentReference? _workoutRef;
@@ -30,13 +41,14 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   final ScrollController _scrollController = ScrollController();
 
   final TextEditingController _workoutNameController = TextEditingController();
-  final TextEditingController _workoutDescriptionController = TextEditingController();
+  final TextEditingController _workoutDescriptionController =
+  TextEditingController();
 
   @override
   void initState() {
     super.initState();
 
-    // If a preloaded workout is passed, populate the fields
+    // If a preloaded workout is passed, populate the fields.
     if (widget.preloadedWorkout != null) {
       _workoutName = widget.preloadedWorkout!['name'] ?? "Untitled Workout";
       _workoutDescription = widget.preloadedWorkout!['description'] ?? "";
@@ -44,13 +56,20 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           ? List<Map<String, dynamic>>.from(widget.preloadedWorkout!['exercises'])
           : [];
 
-      // Initialize controllers & focusNodes for each set
+      // Initialize controllers & focusNodes for each set.
       for (var exercise in _selectedExercises) {
         exercise['controllers'] ??= [];
         exercise['focusNodes'] ??= [];
         for (var i = 0; i < (exercise['sets']?.length ?? 0); i++) {
           Map<String, TextEditingController> ctrl = {};
           Map<String, FocusNode> nodes = {};
+
+          // Make sure each set has the rest-timer fields.
+          exercise['sets'][i]['isSetComplete'] ??= false;
+          exercise['sets'][i]['restRemaining'] ??= 120;
+          exercise['sets'][i]['restTotal'] ??= 120;
+          exercise['sets'][i]['restTimer'] = null;
+          exercise['sets'][i]['isRestActive'] ??= false;
 
           if (exercise['sets'][i].containsKey('reps')) {
             final repsVal = exercise['sets'][i]['reps'];
@@ -60,7 +79,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
             nodes['reps'] = FocusNode();
             nodes['reps']!.addListener(() {
               if (nodes['reps']!.hasFocus) {
-                // Highlight entire value when focusing
                 ctrl['reps']!.selection = TextSelection(
                   baseOffset: 0,
                   extentOffset: ctrl['reps']!.text.length,
@@ -85,7 +103,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
             nodes['weight'] = FocusNode();
             nodes['weight']!.addListener(() {
               if (nodes['weight']!.hasFocus) {
-                // Highlight entire value when focusing
                 ctrl['weight']!.selection = TextSelection(
                   baseOffset: 0,
                   extentOffset: ctrl['weight']!.text.length,
@@ -120,18 +137,24 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       });
     });
 
-    // Create the workout document in Firestore and start the timer
+    // Create the workout document and start the main timer.
     _startWorkout();
   }
 
+  // Create the Firestore document and start the main timer.
   Future<void> _startWorkout() async {
     if (user == null) return;
 
-    // Clean out any ephemeral keys from exercises
+    // Clean out ephemeral keys.
     List<Map<String, dynamic>> cleanedExercises = _selectedExercises.map((exercise) {
       final copy = Map<String, dynamic>.from(exercise);
       copy.remove('controllers');
       copy.remove('focusNodes');
+      if (copy['sets'] is List) {
+        for (var setMap in (copy['sets'] as List)) {
+          setMap.remove('restTimer');
+        }
+      }
       return copy;
     }).toList();
 
@@ -143,30 +166,160 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       'description': _workoutDescription,
       'exercises': cleanedExercises,
     });
-    _startTimer();
-    print("Created brand-new doc: ${_workoutRef!.id}");
+    _startMainTimer();
+    print("Created doc: ${_workoutRef!.id}");
   }
 
-  void _startTimer() {
+  // Main workout timer.
+  void _startMainTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
           _duration++;
         });
-        print("Timer tick: $_duration seconds");
       } else {
         _timer?.cancel();
       }
     });
   }
 
+  // --- TOP TIMER LOGIC (for AppBar timer icon) ---
+
+  // Utility to format mm:ss.
+  String _formatMMSS(int totalSeconds) {
+    final m = totalSeconds ~/ 60;
+    final s = totalSeconds % 60;
+    return "$m:${s.toString().padLeft(2, '0')}";
+  }
+
+  // Start the top timer.
+  void _startTopTimer() {
+    _topTimer?.cancel();
+    _topTimerNotifier.value = _topTimerTotal; // reset
+    _topTimerActive = true;
+    _topTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_topTimerNotifier.value > 0) {
+        _topTimerNotifier.value--;
+      } else {
+        timer.cancel();
+        _topTimerActive = false;
+      }
+    });
+  }
+
+  // Stop the top timer.
+  void _stopTopTimer() {
+    _topTimer?.cancel();
+    _topTimerActive = false;
+  }
+
+  // Show a popup dialog with timer details.
+  void _showTopTimerDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Timer"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Display time left using ValueListenableBuilder.
+              ValueListenableBuilder<int>(
+                valueListenable: _topTimerNotifier,
+                builder: (context, value, child) {
+                  return Text(
+                    _formatMMSS(value),
+                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              ValueListenableBuilder<int>(
+                valueListenable: _topTimerNotifier,
+                builder: (context, value, child) {
+                  double fractionLeft = _topTimerTotal == 0 ? 0 : value / _topTimerTotal;
+                  return LinearProgressIndicator(
+                    value: fractionLeft,
+                    minHeight: 8,
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              // We place +30s and -30s side by side.
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _topTimerTotal += 30;
+                        _topTimerNotifier.value += 30;
+                      });
+                    },
+                    child: const Text("+30s"),
+                  ),
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _topTimerTotal = max<int>(0, _topTimerTotal - 30);
+                        _topTimerNotifier.value =
+                            max<int>(0, _topTimerNotifier.value - 30);
+                      });
+                    },
+                    child: const Text("-30s"),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            if (!_topTimerActive)
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _startTopTimer();
+                  });
+                },
+                child: const Text("Start"),
+              ),
+            if (_topTimerActive)
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _stopTopTimer();
+                  });
+                },
+                child: const Text("Stop"),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // --- FINISH/CANCEL WORKOUT ---
+
   Future<void> _finishWorkout() async {
-    // 1) Stop the timer
     _timer?.cancel();
     print("Finishing workout with duration: $_duration");
 
-    // 2) Final pass: update values from all text controllers so that the sets array is updated
     for (int i = 0; i < _selectedExercises.length; i++) {
       for (int j = 0; j < (_selectedExercises[i]['sets']?.length ?? 0); j++) {
         var repsCtrl = _selectedExercises[i]['controllers'][j]['reps'];
@@ -180,22 +333,25 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           double w = double.tryParse(weightCtrl.text) ?? 0.0;
           final unitProvider = Provider.of<UnitProvider>(context, listen: false);
           if (unitProvider.isKg) {
-            w = UnitConverter.kgToLbs(w); // Convert from kg to lbs for storage
+            w = UnitConverter.kgToLbs(w);
           }
           _updateWeight(i, j, w);
         }
       }
     }
 
-    // 3) Clean up _selectedExercises by removing non-serializable keys
     List<Map<String, dynamic>> cleanedExercises = _selectedExercises.map((exercise) {
       var cleaned = Map<String, dynamic>.from(exercise);
       cleaned.remove("controllers");
       cleaned.remove("focusNodes");
+      if (cleaned['sets'] is List) {
+        for (var setMap in (cleaned['sets'] as List)) {
+          setMap.remove('restTimer');
+        }
+      }
       return cleaned;
     }).toList();
 
-    // 4) Update Firestore with the final data
     try {
       if (_workoutRef != null) {
         await _workoutRef!.update({
@@ -212,15 +368,17 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       print("Error updating workout document: $e");
     }
 
-    // 5) Navigate back to the previous screen
     Navigator.pop(context);
   }
 
   Future<void> _cancelWorkout() async {
     _timer?.cancel();
+    _topTimer?.cancel();
     await _workoutRef?.delete();
     Navigator.pop(context);
   }
+
+  // --- EXERCISE SELECTION ---
 
   Map<String, dynamic> convertExerciseFields(Map<String, dynamic> exercise) {
     List<String> fields = ['name', 'category', 'bodyPart', 'subcategory'];
@@ -253,11 +411,9 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           onExercisesSelected: (selected) {
             setState(() {
               for (var exercise in selected) {
-                Map<String, dynamic> fixedExercise =
-                convertExerciseFields(exercise);
+                Map<String, dynamic> fixedExercise = convertExerciseFields(exercise);
                 fixedExercise['id'] = exercise['id'];
-                fixedExercise['controllers'] =
-                <Map<String, TextEditingController>>[];
+                fixedExercise['controllers'] = <Map<String, TextEditingController>>[];
                 fixedExercise['focusNodes'] = <Map<String, FocusNode>>[];
                 _selectedExercises.add(fixedExercise);
               }
@@ -282,31 +438,83 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
   Map<String, dynamic> _getDefaultSet(String category) {
     final lower = category.toLowerCase();
+    // Add rest timer fields with default total of 120 seconds.
     if (lower.contains("cardio")) {
-      return {'miles': null, 'duration': null};
+      return {
+        'miles': null,
+        'duration': null,
+        'isSetComplete': false,
+        'restRemaining': 120,
+        'restTotal': 120,
+        'restTimer': null,
+        'isRestActive': false,
+      };
     } else if (lower.contains("lap")) {
-      return {'reps': null, 'duration': null};
+      return {
+        'reps': null,
+        'duration': null,
+        'isSetComplete': false,
+        'restRemaining': 120,
+        'restTotal': 120,
+        'restTimer': null,
+        'isRestActive': false,
+      };
     } else if (lower.contains("isometric")) {
-      return {'reps': null, 'weight': null, 'duration': null};
-    } else if (lower.contains("stretching") ||
-        lower.contains("mobility") ||
-        lower == "duration") {
-      return {'duration': null};
+      return {
+        'reps': null,
+        'weight': null,
+        'duration': null,
+        'isSetComplete': false,
+        'restRemaining': 120,
+        'restTotal': 120,
+        'restTimer': null,
+        'isRestActive': false,
+      };
+    } else if (lower.contains("stretching") || lower.contains("mobility") || lower == "duration") {
+      return {
+        'duration': null,
+        'isSetComplete': false,
+        'restRemaining': 120,
+        'restTotal': 120,
+        'restTimer': null,
+        'isRestActive': false,
+      };
     } else if (lower.contains("assisted body")) {
-      return {'reps': null, 'weight': null};
+      return {
+        'reps': null,
+        'weight': null,
+        'isSetComplete': false,
+        'restRemaining': 120,
+        'restTotal': 120,
+        'restTimer': null,
+        'isRestActive': false,
+      };
     } else if (lower.contains("non-weight")) {
-      return {'reps': null};
+      return {
+        'reps': null,
+        'isSetComplete': false,
+        'restRemaining': 120,
+        'restTotal': 120,
+        'restTimer': null,
+        'isRestActive': false,
+      };
     } else {
-      return {'reps': null, 'weight': null};
+      return {
+        'reps': null,
+        'weight': null,
+        'isSetComplete': false,
+        'restRemaining': 120,
+        'restTotal': 120,
+        'restTimer': null,
+        'isRestActive': false,
+      };
     }
   }
 
-  // Fetches the sets from the most recent workout that included this exercise
   Future<List<dynamic>> _fetchLastPerformedSets(String exerciseId) async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return [];
 
-    // Ordered by descending date, so the first doc that has the exercise is the most recent
     final workoutsSnapshot = await _firestore
         .collection('workouts')
         .where('userId', isEqualTo: currentUser.uid)
@@ -319,7 +527,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         if (ex['id'] == exerciseId) {
           List sets = ex['sets'] ?? [];
           if (sets.isNotEmpty) {
-            // Return the sets from the most recent workout that had this exercise
             return sets;
           }
         }
@@ -328,17 +535,14 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     return [];
   }
 
-  // Returns a map with the reps/weight (converted to the user’s current units if needed)
   Future<Map<String, String>> _getPrefillFromLastWorkout(String exerciseId) async {
     final setsFromLast = await _fetchLastPerformedSets(exerciseId);
     if (setsFromLast.isEmpty) {
       return {'reps': '', 'weight': ''};
     }
-    // For simplicity, we'll just use the final set from that workout
     final lastSet = setsFromLast.last;
     final unitProvider = Provider.of<UnitProvider>(context, listen: false);
 
-    // Parse reps
     int reps = 0;
     if (lastSet['reps'] is int) {
       reps = lastSet['reps'];
@@ -346,15 +550,12 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       reps = int.tryParse(lastSet['reps']?.toString() ?? "") ?? 0;
     }
 
-    // Parse weight (stored in lbs in DB)
     double weight = 0.0;
     if (lastSet['weight'] is int) {
       weight = (lastSet['weight'] as int).toDouble();
     } else if (lastSet['weight'] is double) {
       weight = lastSet['weight'];
     }
-
-    // Convert to kg if user is using kg
     if (unitProvider.isKg) {
       weight = UnitConverter.lbsToKg(weight);
     }
@@ -365,27 +566,21 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     };
   }
 
-  // Updated to async so we can fetch from the last workout if no sets exist yet
   Future<void> _addSet(int exerciseIndex) async {
     final exercise = _selectedExercises[exerciseIndex];
     final category = exercise['category']?.toString() ?? "";
     final newSet = _getDefaultSet(category);
     final newSetIndex = exercise['sets'].length;
 
-
     int lastSetIndex = (exercise['sets']?.length ?? 0) - 1;
-
-    // We'll gather initial values for reps & weight
     String initialRepsText = "";
     String initialWeightText = "";
 
-    // If there's no existing set, try to pull from the last workout
     if (lastSetIndex < 0) {
       final prefill = await _getPrefillFromLastWorkout(exercise['id']);
       initialRepsText = prefill['reps'] ?? "";
       initialWeightText = prefill['weight'] ?? "";
     } else {
-      // Otherwise, copy from the last set in this session
       initialRepsText = exercise['controllers'][lastSetIndex]['reps']?.text ?? "";
       initialWeightText = exercise['controllers'][lastSetIndex]['weight']?.text ?? "";
     }
@@ -405,7 +600,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         } else {
           _verifyAndUpdateReps(
             exerciseIndex,
-            newSetIndex, // Use the stored index
+            newSetIndex,
             newControllers['reps']!.text,
           );
         }
@@ -424,7 +619,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         } else {
           _verifyAndUpdateWeight(
             exerciseIndex,
-            newSetIndex, // Use the stored index
+            newSetIndex,
             newControllers['weight']!.text,
           );
         }
@@ -439,7 +634,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       exercise['focusNodes'].add(newFocusNodes);
     });
 
-    // Scroll to the bottom so the new set is visible
     Future.delayed(const Duration(milliseconds: 200), () {
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent,
@@ -451,16 +645,13 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
 
   void _removeSet(int exerciseIndex, int setIndex) {
     final exercise = _selectedExercises[exerciseIndex];
-
-    // Dispose controllers
     exercise['controllers'][setIndex].values.forEach((c) => c.dispose());
+    exercise['focusNodes'][setIndex].values.forEach((n) => n.dispose());
 
-    // Dispose focus nodes
-    exercise['focusNodes'][setIndex].values.forEach((n) {
-      n.dispose();
-    });
+    if (exercise['sets'][setIndex]['restTimer'] != null) {
+      (exercise['sets'][setIndex]['restTimer'] as Timer).cancel();
+    }
 
-    // Remove them from the arrays
     setState(() {
       exercise['sets'].removeAt(setIndex);
       exercise['controllers'].removeAt(setIndex);
@@ -468,6 +659,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
   }
 
+  // Reps & Weight updates.
   void _updateReps(int exerciseIndex, int setIndex, int reps) {
     setState(() {
       _selectedExercises[exerciseIndex]['sets'][setIndex]['reps'] = reps;
@@ -492,6 +684,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
   }
 
+  // Format main workout duration.
   String _formatDuration(int seconds) {
     final hours = seconds ~/ 3600;
     final minutes = (seconds % 3600) ~/ 60;
@@ -501,6 +694,125 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     }
     return "${minutes}m ${remainingSeconds}s";
   }
+
+  // Format for rest timers in mm:ss.
+  String _formatRestMMSS(int seconds) {
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return "$m:${s.toString().padLeft(2, '0')}";
+  }
+
+  // Handling set completion & rest.
+  void _onSetCheckChanged(int exerciseIndex, int setIndex, bool? val) {
+    if (val == null) return;
+    setState(() {
+      _selectedExercises[exerciseIndex]['sets'][setIndex]['isSetComplete'] = val;
+    });
+    if (val) {
+      _startSetRestTimer(exerciseIndex, setIndex);
+    } else {
+      _stopSetRestTimer(exerciseIndex, setIndex);
+    }
+  }
+
+  void _startSetRestTimer(int exerciseIndex, int setIndex) {
+    final setData = _selectedExercises[exerciseIndex]['sets'][setIndex];
+    if (setData['restTimer'] != null) {
+      (setData['restTimer'] as Timer).cancel();
+    }
+    setData['isRestActive'] = true;
+    // Ensure restTotal is set.
+    setData['restTotal'] ??= setData['restRemaining'];
+    setData['restTimer'] = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if ((setData['restRemaining'] as int) > 0) {
+          setData['restRemaining'] = (setData['restRemaining'] as int) - 1;
+        } else {
+          timer.cancel();
+          setData['isRestActive'] = false;
+        }
+      });
+    });
+  }
+
+  void _stopSetRestTimer(int exerciseIndex, int setIndex) {
+    final setData = _selectedExercises[exerciseIndex]['sets'][setIndex];
+    if (setData['restTimer'] != null) {
+      (setData['restTimer'] as Timer).cancel();
+      setData['restTimer'] = null;
+    }
+    setData['isRestActive'] = false;
+  }
+
+  // Verification dialogs.
+  Future<bool> _showVerificationDialog(String message) async {
+    return (await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        title: Text(
+          "Confirm Value",
+          style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle()),
+        ),
+        content: Text(
+          message,
+          style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
+              .copyWith(color: Theme.of(context).hintColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("No"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Yes"),
+          ),
+        ],
+      ),
+    )) ??
+        false;
+  }
+
+  Future<void> _verifyAndUpdateReps(int exerciseIndex, int setIndex, String valueStr) async {
+    int reps = int.tryParse(valueStr) ?? 0;
+    if (reps > 100) {
+      bool confirmed = await _showVerificationDialog("You entered over 100 reps. Are you sure?");
+      if (!confirmed) {
+        setState(() {
+          _selectedExercises[exerciseIndex]['sets'][setIndex]['reps'] = null;
+          _selectedExercises[exerciseIndex]['controllers'][setIndex]['reps']?.text = "";
+        });
+        return;
+      }
+    }
+    _updateReps(exerciseIndex, setIndex, reps);
+  }
+
+  Future<void> _verifyAndUpdateWeight(int exerciseIndex, int setIndex, String valueStr) async {
+    double weight = double.tryParse(valueStr) ?? 0.0;
+    final unitProvider = Provider.of<UnitProvider>(context, listen: false);
+    if (unitProvider.isKg) {
+      weight = UnitConverter.kgToLbs(weight);
+    }
+    if (weight > 500) {
+      bool confirmed = await _showVerificationDialog("You entered over 500 lbs. Are you sure?");
+      if (!confirmed) {
+        setState(() {
+          _selectedExercises[exerciseIndex]['sets'][setIndex]['weight'] = null;
+          _selectedExercises[exerciseIndex]['controllers'][setIndex]['weight']?.text = "";
+        });
+        return;
+      }
+    }
+    _updateWeight(exerciseIndex, setIndex, weight);
+  }
+
+  // --- EXERCISE HISTORY LOGIC ---
 
   Future<Map<String, dynamic>> _fetchExerciseHistory(String exerciseId) async {
     List<Map<String, dynamic>> allEntries = [];
@@ -528,19 +840,18 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           for (var set in sets) {
             if (set.containsKey('weight') && set.containsKey('reps')) {
               double wVal = 0.0;
-              int reps = 0;
+              int repsVal = 0;
               if (set['weight'] is int) {
                 wVal = (set['weight'] as int).toDouble();
               } else if (set['weight'] is double) {
                 wVal = set['weight'];
               }
               if (set['reps'] is int) {
-                reps = set['reps'];
+                repsVal = set['reps'];
               } else {
-                reps = int.tryParse(set['reps'].toString()) ?? 0;
+                repsVal = int.tryParse(set['reps']?.toString() ?? "") ?? 0;
               }
-              // volume in DB is always stored in lbs * reps
-              volume += (wVal * reps);
+              volume += (wVal * repsVal);
             }
           }
           final entry = {
@@ -557,10 +868,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       }
     }
 
-    // Sort by most recent
     allEntries.sort((a, b) => b['date'].compareTo(a['date']));
-    // Remove the best entry from "recent" so it doesn't appear twice
-    if (bestEntry != null) {
+        if (bestEntry != null) {
       allEntries.remove(bestEntry);
     }
     final recent = allEntries.take(10).toList();
@@ -569,6 +878,74 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       'bestEntry': bestEntry,
       'recent': recent,
     };
+  }
+
+  Widget _buildHistoryCard(Map<String, dynamic> entry, {bool showTrophy = false}) {
+    return Consumer<UnitProvider>(
+      builder: (context, unitProvider, child) {
+        DateTime date = entry['date'];
+        double volume = entry['volume'] ?? 0.0;
+        if (unitProvider.isKg) {
+          volume = UnitConverter.lbsToKg(volume);
+        }
+        List sets = entry['sets'] ?? [];
+        String unitLabel = unitProvider.isKg ? 'kg' : 'lbs';
+
+        String setDetails = sets.asMap().entries.map((e) {
+          int setNum = e.key + 1;
+          var set = e.value;
+          double rawWeight = 0.0;
+          if (set.containsKey('weight')) {
+            if (set['weight'] is int) {
+              rawWeight = (set['weight'] as int).toDouble();
+            } else if (set['weight'] is double) {
+              rawWeight = set['weight'];
+            }
+          }
+          int repsVal = 0;
+          if (set.containsKey('reps')) {
+            if (set['reps'] is int) {
+              repsVal = set['reps'];
+            } else {
+              repsVal = int.tryParse(set['reps']?.toString() ?? "") ?? 0;
+            }
+          }
+          if (unitProvider.isKg) {
+            rawWeight = UnitConverter.lbsToKg(rawWeight);
+          }
+          String weightStr = rawWeight == 0.0 ? "-" : rawWeight.toStringAsFixed(1);
+          return "Set $setNum: $weightStr$unitLabel x $repsVal reps";
+        }).join("\n");
+
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          color: Theme.of(context).cardColor,
+          child: ListTile(
+            leading: showTrophy ? const Icon(Icons.emoji_events, color: Colors.amber) : null,
+            title: Text(
+              "${date.toLocal().toString().split('.')[0]}",
+              style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
+                  .copyWith(color: Theme.of(context).textTheme.bodyMedium?.color),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Volume: ${volume.toStringAsFixed(1)} $unitLabel",
+                  style: (Theme.of(context).textTheme.bodySmall ?? const TextStyle())
+                      .copyWith(color: Theme.of(context).hintColor),
+                ),
+                Text(
+                  setDetails,
+                  style: (Theme.of(context).textTheme.bodySmall ?? const TextStyle())
+                      .copyWith(color: Theme.of(context).hintColor),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _showExerciseHistoryForExercise(Map<String, dynamic> exercise) async {
@@ -640,162 +1017,41 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     );
   }
 
-  // We wrap this card in a Consumer to detect the current unit setting (kg vs lbs)
-  Widget _buildHistoryCard(Map<String, dynamic> entry, {bool showTrophy = false}) {
-    return Consumer<UnitProvider>(
-      builder: (context, unitProvider, child) {
-        DateTime date = entry['date'];
-        // volume is stored in "lbs * reps". Convert if user is in kg.
-        double volume = entry['volume'] ?? 0.0;
-        if (unitProvider.isKg) {
-          volume = UnitConverter.lbsToKg(volume);
-        }
-        List sets = entry['sets'] ?? [];
-        String unitLabel = unitProvider.isKg ? 'kg' : 'lbs';
-
-        // Build a string for each set
-        String setDetails = sets.asMap().entries.map((e) {
-          int setNum = e.key + 1;
-          var set = e.value;
-          double rawWeight = 0.0;
-          if (set.containsKey('weight')) {
-            if (set['weight'] is int) {
-              rawWeight = (set['weight'] as int).toDouble();
-            } else if (set['weight'] is double) {
-              rawWeight = set['weight'];
-            }
-          }
-          int repsVal = 0;
-          if (set.containsKey('reps')) {
-            if (set['reps'] is int) {
-              repsVal = set['reps'];
-            } else {
-              repsVal = int.tryParse(set['reps']?.toString() ?? "") ?? 0;
-            }
-          }
-
-          // Convert rawWeight to kg if needed
-          if (unitProvider.isKg) {
-            rawWeight = UnitConverter.lbsToKg(rawWeight);
-          }
-
-          // Format
-          String weightStr = rawWeight == 0.0 ? "-" : rawWeight.toStringAsFixed(1);
-          return "Set $setNum: $weightStr$unitLabel x $repsVal reps";
-        }).join("\n");
-
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          color: Theme.of(context).cardColor,
-          child: ListTile(
-            leading: showTrophy ? const Icon(Icons.emoji_events, color: Colors.amber) : null,
-            title: Text(
-              "${date.toLocal().toString().split('.')[0]}",
-              style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
-                  .copyWith(color: Theme.of(context).textTheme.bodyMedium?.color),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  // Show volume in the user's chosen units
-                  "Volume: ${volume.toStringAsFixed(1)} $unitLabel",
-                  style: (Theme.of(context).textTheme.bodySmall ?? const TextStyle())
-                      .copyWith(color: Theme.of(context).hintColor),
-                ),
-                Text(
-                  setDetails,
-                  style: (Theme.of(context).textTheme.bodySmall ?? const TextStyle())
-                      .copyWith(color: Theme.of(context).hintColor),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<bool> _showVerificationDialog(String message) async {
-    return await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        title: Text(
-          "Confirm Value",
-          style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
-              .copyWith(color: Theme.of(context).textTheme.bodyMedium?.color),
-        ),
-        content: Text(
-          message,
-          style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
-              .copyWith(color: Theme.of(context).hintColor),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("No"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Yes"),
-          ),
-        ],
-      ),
-    ) ??
-        false;
-  }
-
-  Future<void> _verifyAndUpdateReps(int exerciseIndex, int setIndex, String valueStr) async {
-    int reps = int.tryParse(valueStr) ?? 0;
-    if (reps > 100) {
-      bool confirmed = await _showVerificationDialog("You entered over 100 reps. Are you sure?");
-      if (!confirmed) {
-        setState(() {
-          _selectedExercises[exerciseIndex]['sets'][setIndex]['reps'] = null;
-          _selectedExercises[exerciseIndex]['controllers'][setIndex]['reps']?.text = "";
-        });
-        return;
-      }
-    }
-    _updateReps(exerciseIndex, setIndex, reps);
-  }
-
-  Future<void> _verifyAndUpdateWeight(int exerciseIndex, int setIndex, String valueStr) async {
-    double weight = double.tryParse(valueStr) ?? 0.0;
-    // Get current unit preference.
-    final unitProvider = Provider.of<UnitProvider>(context, listen: false);
-    // If using kg, convert the entered value (assumed to be kg) to lbs for storage
-    if (unitProvider.isKg) {
-      weight = UnitConverter.kgToLbs(weight);
-    }
-    if (weight > 500) {
-      bool confirmed = await _showVerificationDialog("You entered over 500 lbs. Are you sure?");
-      if (!confirmed) {
-        setState(() {
-          _selectedExercises[exerciseIndex]['sets'][setIndex]['weight'] = null;
-          _selectedExercises[exerciseIndex]['controllers'][setIndex]['weight']?.text = "";
-        });
-        return;
-      }
-    }
-    _updateWeight(exerciseIndex, setIndex, weight);
-  }
-
   @override
   Widget build(BuildContext context) {
+    // We'll assume the "Add Exercise" button is using
+    // Theme.of(context).colorScheme.primary for its color.
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        surfaceTintColor: Colors.transparent,
         elevation: 0,
-        scrolledUnderElevation: 0,
-        shadowColor: Colors.transparent,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Workout Session'),
+            // Left: "Workout Session" with timer icon and remaining time.
+            Row(
+              children: [
+                const Text('Workout Session'),
+                IconButton(
+                  icon: Icon(Icons.timer, color: primaryColor),
+                  onPressed: _showTopTimerDialog,
+                  tooltip: "Show Timer Popup",
+                ),
+                ValueListenableBuilder<int>(
+                  valueListenable: _topTimerNotifier,
+                  builder: (context, value, child) {
+                    return Text(
+                      _formatMMSS(value),
+                      style: const TextStyle(fontSize: 16),
+                    );
+                  },
+                ),
+              ],
+            ),
+            // Right: Main workout duration.
             Text(
               "Duration: ${_formatDuration(_duration)}",
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
@@ -807,7 +1063,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextField(
               decoration: const InputDecoration(
@@ -826,6 +1081,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               onPressed: _openExerciseSelection,
               child: const Text('Add Exercise'),
             ),
+            const SizedBox(height: 8),
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
@@ -843,7 +1099,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Exercise header row
+                          // Header row.
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -853,9 +1109,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                   children: [
                                     Text(
                                       exercise['name'] ?? 'Unnamed Exercise',
-                                      style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold),
+                                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                                     ),
                                     Text(
                                       "${exercise['category'] ?? 'Unknown Category'} | ${exercise['bodyPart'] ?? 'Unknown Body Part'}${exercise['subcategory'] != null ? ' (${exercise['subcategory']})' : ''}",
@@ -873,124 +1127,214 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                               IconButton(
                                 icon: const Icon(Icons.add, color: Colors.green),
                                 onPressed: () => _addSet(exerciseIndex),
+                                tooltip: '+ Another Set',
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete, color: Colors.red),
                                 onPressed: () => _removeExercise(exerciseIndex),
+                                tooltip: 'Remove Exercise',
                               ),
                             ],
                           ),
-                          // Sets list
+                          // Sets list.
                           Column(
                             children: List.generate(
                               exercise['sets'].length,
                                   (setIndex) {
                                 var set = exercise['sets'][setIndex];
-                                Map<String, TextEditingController> controllers =
-                                exercise['controllers'][setIndex];
-                                Map<String, FocusNode> focusNodes =
-                                exercise['focusNodes'][setIndex];
+                                Map<String, TextEditingController> controllers = exercise['controllers'][setIndex];
+                                Map<String, FocusNode> focusNodes = exercise['focusNodes'][setIndex];
 
-                                return Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text("Set ${setIndex + 1}"),
-                                    Expanded(
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                // For improved highlight, use a BoxDecoration with theme-based color.
+                                final bool isComplete = (set['isSetComplete'] == true);
+
+                                return Container(
+                                  margin: const EdgeInsets.symmetric(vertical: 4),
+                                  decoration: isComplete
+                                      ? BoxDecoration(
+                                    color: primaryColor.withOpacity(0.1),
+                                    border: Border.all(
+                                      color: primaryColor.withOpacity(0.4),
+                                      width: 1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  )
+                                      : null,
+                                  padding: const EdgeInsets.all(8),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          if (set.containsKey('reps'))
-                                            SizedBox(
-                                              width: 50,
-                                              child: TextField(
-                                                decoration: const InputDecoration(labelText: "Reps"),
-                                                keyboardType: TextInputType.number,
-                                                controller: controllers['reps'],
-                                                focusNode: focusNodes['reps'],
-                                                onSubmitted: (value) {
-                                                  _verifyAndUpdateReps(
-                                                    exerciseIndex,
-                                                    setIndex,
-                                                    value,
-                                                  );
-                                                },
+                                          Row(
+                                            children: [
+                                              Checkbox(
+                                                value: set['isSetComplete'] ?? false,
+                                                onChanged: (val) =>
+                                                    _onSetCheckChanged(exerciseIndex, setIndex, val),
                                               ),
-                                            ),
-                                          if (set.containsKey('weight'))
-                                            Consumer<UnitProvider>(
-                                              builder: (context, unitProvider, child) {
-                                                return SizedBox(
-                                                  width: 70,
-                                                  child: TextField(
-                                                    decoration: InputDecoration(
-                                                      labelText:
-                                                      "Weight (${unitProvider.isKg ? 'kg' : 'lbs'})",
+                                              Text("Set ${setIndex + 1}"),
+                                            ],
+                                          ),
+                                          Expanded(
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                              children: [
+                                                if (set.containsKey('reps'))
+                                                  SizedBox(
+                                                    width: 50,
+                                                    child: TextField(
+                                                      decoration: const InputDecoration(labelText: "Reps"),
+                                                      keyboardType: TextInputType.number,
+                                                      controller: controllers['reps'],
+                                                      focusNode: focusNodes['reps'],
+                                                      onSubmitted: (value) {
+                                                        _verifyAndUpdateReps(exerciseIndex, setIndex, value);
+                                                      },
                                                     ),
-                                                    keyboardType:
-                                                    const TextInputType.numberWithOptions(decimal: true),
-                                                    controller: controllers['weight'],
-                                                    focusNode: focusNodes['weight'],
-                                                    onSubmitted: (value) {
-                                                      _verifyAndUpdateWeight(
-                                                        exerciseIndex,
-                                                        setIndex,
-                                                        value,
+                                                  ),
+                                                if (set.containsKey('weight'))
+                                                  Consumer<UnitProvider>(
+                                                    builder: (context, unitProvider, child) {
+                                                      return SizedBox(
+                                                        width: 70,
+                                                        child: TextField(
+                                                          decoration: InputDecoration(
+                                                            labelText: "Weight (${unitProvider.isKg ? 'kg' : 'lbs'})",
+                                                          ),
+                                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                          controller: controllers['weight'],
+                                                          focusNode: focusNodes['weight'],
+                                                          onSubmitted: (value) {
+                                                            _verifyAndUpdateWeight(exerciseIndex, setIndex, value);
+                                                          },
+                                                        ),
                                                       );
                                                     },
                                                   ),
-                                                );
-                                              },
+                                                if (set.containsKey('duration'))
+                                                  SizedBox(
+                                                    width: 70,
+                                                    child: TextField(
+                                                      decoration: const InputDecoration(labelText: "Duration (sec)"),
+                                                      keyboardType: TextInputType.number,
+                                                      onChanged: (value) {
+                                                        _updateDuration(
+                                                          exerciseIndex,
+                                                          setIndex,
+                                                          int.tryParse(value) ?? 0,
+                                                        );
+                                                      },
+                                                    ),
+                                                  ),
+                                                if (set.containsKey('miles'))
+                                                  SizedBox(
+                                                    width: 70,
+                                                    child: TextField(
+                                                      decoration: const InputDecoration(labelText: "Miles"),
+                                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                      onChanged: (value) {
+                                                        _updateMiles(
+                                                          exerciseIndex,
+                                                          setIndex,
+                                                          double.tryParse(value) ?? 0.0,
+                                                        );
+                                                      },
+                                                    ),
+                                                  ),
+                                              ],
                                             ),
-                                          if (set.containsKey('duration'))
-                                            SizedBox(
-                                              width: 70,
-                                              child: TextField(
-                                                decoration: const InputDecoration(
-                                                  labelText: "Duration (sec)",
-                                                ),
-                                                keyboardType: TextInputType.number,
-                                                onChanged: (value) {
-                                                  _updateDuration(
-                                                    exerciseIndex,
-                                                    setIndex,
-                                                    int.tryParse(value) ?? 0,
-                                                  );
-                                                },
+                                          ),
+                                          Row(
+                                            children: [
+                                              IconButton(
+                                                icon: const Icon(Icons.add, color: Colors.green),
+                                                onPressed: () => _addSet(exerciseIndex),
+                                                tooltip: '+ Another Set',
                                               ),
-                                            ),
-                                          if (set.containsKey('miles'))
-                                            SizedBox(
-                                              width: 70,
-                                              child: TextField(
-                                                decoration:
-                                                const InputDecoration(labelText: "Miles"),
-                                                keyboardType:
-                                                const TextInputType.numberWithOptions(decimal: true),
-                                                onChanged: (value) {
-                                                  _updateMiles(
-                                                    exerciseIndex,
-                                                    setIndex,
-                                                    double.tryParse(value) ?? 0.0,
-                                                  );
-                                                },
+                                              IconButton(
+                                                icon: const Icon(Icons.remove, color: Colors.red),
+                                                onPressed: () => _removeSet(exerciseIndex, setIndex),
+                                                tooltip: 'Remove This Set',
                                               ),
-                                            ),
+                                            ],
+                                          ),
                                         ],
                                       ),
-                                    ),
-                                    Row(
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(Icons.add, color: Colors.green),
-                                          onPressed: () => _addSet(exerciseIndex),
+                                      // If rest timer is active, show its UI.
+                                      if (set['isRestActive'] == true)
+                                        Padding(
+                                          padding: const EdgeInsets.only(top: 8),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                children: [
+                                                  Text(
+                                                    "Rest: ${_formatMMSS(set['restRemaining'] as int)}",
+                                                    style: TextStyle(
+                                                      color: primaryColor,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  Row(
+                                                    children: [
+                                                      // +30s
+                                                      TextButton(
+                                                        style: TextButton.styleFrom(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                                                          minimumSize: Size.zero, // to reduce space
+                                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                          foregroundColor: primaryColor,
+                                                        ),
+                                                        onPressed: () {
+                                                          setState(() {
+                                                            final curr = set['restRemaining'] as int;
+                                                            final total = set['restTotal'] as int;
+                                                            set['restRemaining'] = curr + 30;
+                                                            set['restTotal'] = total + 30;
+                                                          });
+                                                        },
+                                                        child: const Text("+30s"),
+                                                      ),
+                                                      // -30s
+                                                      TextButton(
+                                                        style: TextButton.styleFrom(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                                                          minimumSize: Size.zero,
+                                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                          foregroundColor: primaryColor,
+                                                        ),
+                                                        onPressed: () {
+                                                          setState(() {
+                                                            final curr = set['restRemaining'] as int;
+                                                            final total = set['restTotal'] as int;
+                                                            set['restRemaining'] = max<int>(0, curr - 30);
+                                                            set['restTotal'] = max<int>(0, total - 30);
+                                                          });
+                                                        },
+                                                        child: const Text("-30s"),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 4),
+                                              LinearProgressIndicator(
+                                                value: (set['restTotal'] != null && (set['restTotal'] as int) > 0)
+                                                    ? (set['restRemaining'] as int) / (set['restTotal'] as int)
+                                                    : 0.0,
+                                                minHeight: 4,
+                                                color: primaryColor,
+                                                backgroundColor: primaryColor.withOpacity(0.2),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                        IconButton(
-                                          icon: const Icon(Icons.remove, color: Colors.red),
-                                          onPressed: () => _removeSet(exerciseIndex, setIndex),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 );
                               },
                             ),
@@ -1002,7 +1346,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 },
               ),
             ),
-            // Finish and Cancel buttons
+            // Finish and Cancel buttons.
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -1026,6 +1370,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   @override
   void dispose() {
     _timer?.cancel();
+    _topTimer?.cancel();
+    _topTimerNotifier.dispose();
     _workoutNameController.dispose();
     _workoutDescriptionController.dispose();
 
@@ -1038,6 +1384,13 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       if (exercise['focusNodes'] != null) {
         for (var nodeMap in exercise['focusNodes']) {
           nodeMap.values.forEach((node) => node.dispose());
+        }
+      }
+      if (exercise['sets'] is List) {
+        for (var setMap in exercise['sets']) {
+          if (setMap['restTimer'] != null) {
+            (setMap['restTimer'] as Timer).cancel();
+          }
         }
       }
     }
