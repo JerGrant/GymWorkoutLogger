@@ -25,8 +25,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
   double avgDuration = 0; // in minutes
 
   // Streaks (session-based, not deduplicating by day)
-  int currentStreak = 0; // chain of consecutive sessions including the latest
-  int longestStreak = 0; // max chain across entire history
+  int currentStreak = 0;
+  int longestStreak = 0;
 
   // Expected workouts per week => allowed rest days = 7 - expectedWorkoutDays
   int expectedWorkoutDays = 5;
@@ -191,6 +191,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
     });
   }
 
+  /// Returns the Monday of the given date's week.
   DateTime _mondayOfWeek(DateTime date) {
     int delta = date.weekday - DateTime.monday;
     return DateTime(date.year, date.month, date.day).subtract(Duration(days: delta));
@@ -336,7 +337,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
     );
   }
 
-  /// Updated: Wrap each row of stat cards in IntrinsicHeight + crossAxisAlignment.stretch
   Widget _buildWorkoutStats() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -349,7 +349,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
           ),
         ),
         const SizedBox(height: 10),
-
         // First row: Total Workouts & Workouts This Month
         IntrinsicHeight(
           child: Row(
@@ -368,7 +367,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
           ),
         ),
         const SizedBox(height: 8),
-
         // Second row: Avg. Duration & Total Time
         IntrinsicHeight(
           child: Row(
@@ -387,7 +385,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
           ),
         ),
         const SizedBox(height: 8),
-
         // Third row: Streak & Longest Streak
         IntrinsicHeight(
           child: Row(
@@ -526,6 +523,23 @@ class _WorkoutPageState extends State<WorkoutPage> {
                       );
                     },
                   ),
+                ),
+              ),
+              // Tooltip using Approach B: Minimal text with our specified colors.
+              barTouchData: BarTouchData(
+                enabled: true,
+                touchTooltipData: BarTouchTooltipData(
+                  tooltipPadding: const EdgeInsets.all(8),
+                  tooltipMargin: 0,
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                    return BarTooltipItem(
+                      rod.toY.toStringAsFixed(1),
+                      TextStyle(
+                        color: const Color(0xFF1A1A2E), // text color
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
