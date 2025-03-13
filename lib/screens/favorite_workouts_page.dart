@@ -4,8 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-// IMPORTANT: Changed import to navigate to the workout session page.
 import 'workout_session_page.dart';
+import 'workout_history_detail_page.dart';
 
 class FavoriteWorkoutsPage extends StatefulWidget {
   @override
@@ -84,7 +84,6 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
           itemBuilder: (context, index) {
             final doc = docs[index];
             final workout = doc.data() as Map<String, dynamic>;
-            final workoutId = doc.id;
             final isFavorited = workout['favorited'] == true;
 
             return Card(
@@ -116,23 +115,13 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
                   ],
                 ),
                 onTap: () {
-                  // Grab the old workout data as a template
                   final docData = doc.data() as Map<String, dynamic>;
-                  // Remove fields that belong to the old doc
-                  docData.remove('timestamp');
-                  docData.remove('duration');
-                  docData.remove('favorited');
-                  // If there's an 'id' field or doc ID, remove it too
-                  docData.remove('id');
-                  // Also remove any leftover controllers/focusNodes so you don't reuse them
-                  docData.remove('controllers');
-                  docData.remove('focusNodes');
-
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => WorkoutSessionPage(
-                        preloadedWorkout: docData,
+                      builder: (context) => WorkoutHistoryDetailPage(
+                        workout: docData,
+                        workoutId: doc.id,
                       ),
                     ),
                   );
@@ -148,15 +137,14 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Updated
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor, // Updated
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         surfaceTintColor: Colors.transparent,
-        title: Text('Favorite Workouts', style: Theme.of(context).appBarTheme.titleTextStyle), // Updated
+        title: Text('Favorite Workouts', style: Theme.of(context).appBarTheme.titleTextStyle),
       ),
       body: Column(
         children: [
-          // Search field for favorite workouts
           Padding(
             padding: const EdgeInsets.all(10.0),
             child: TextField(
@@ -167,10 +155,10 @@ class _FavoriteWorkoutsPageState extends State<FavoriteWorkoutsPage> {
                 ),
                 prefixIcon: Icon(Icons.search, color: Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.7)),
                 filled: true,
-                fillColor: Theme.of(context).scaffoldBackgroundColor, // Updated
+                fillColor: Theme.of(context).scaffoldBackgroundColor,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
-                  borderSide: BorderSide(color: Theme.of(context).dividerColor), // Updated
+                  borderSide: BorderSide(color: Theme.of(context).dividerColor),
                 ),
               ),
               style: Theme.of(context).textTheme.bodyMedium,

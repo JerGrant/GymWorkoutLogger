@@ -25,8 +25,6 @@ class WorkoutHistoryDetailPage extends StatefulWidget {
 class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
   final TextEditingController _commentController = TextEditingController();
   bool isFavorited = false;
-
-  /// We store the duration as a friendly string, e.g. "35s", "2m 14s", "1h 5m 2s".
   String? workoutDurationString;
 
   @override
@@ -35,25 +33,21 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
     _commentController.text = widget.workout['comments'] ?? '';
     isFavorited = widget.workout['favorited'] == true;
 
-    // If your Firestore doc has a field "duration" in total seconds, parse it:
     final durationValue = widget.workout['duration'];
     if (durationValue != null) {
       final durationInSeconds = durationValue is int
           ? durationValue
           : int.tryParse(durationValue.toString()) ?? 0;
 
-      // Convert total seconds to h/m/s
       final hours = durationInSeconds ~/ 3600;
       final minutes = (durationInSeconds % 3600) ~/ 60;
       final seconds = durationInSeconds % 60;
 
-      // Build the friendly string
       final buffer = StringBuffer();
       if (hours > 0) buffer.write('${hours}h ');
       if (minutes > 0) buffer.write('${minutes}m ');
       if (seconds > 0) buffer.write('${seconds}s');
 
-      // If somehow duration is 0, at least say "0s"
       workoutDurationString =
       buffer.isEmpty ? '0s' : buffer.toString().trim();
     }
@@ -165,11 +159,9 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
 
   List<Widget> _buildStrengthSets(List setsList) {
     final widgets = <Widget>[];
-    // Use Provider to get unit preference for conversion.
     final unitProvider = Provider.of<UnitProvider>(context);
     for (int i = 0; i < setsList.length; i++) {
       final setData = setsList[i] as Map<String, dynamic>;
-      // Check if the set appears to have cardio data.
       if ((setData.containsKey('duration') ||
           setData.containsKey('miles') ||
           setData.containsKey('reps')) &&
@@ -212,7 +204,6 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
         } else {
           weightValue = double.tryParse(weight.toString()) ?? 0.0;
         }
-        // Convert weight if user prefers kg.
         if (unitProvider.isKg) {
           weightValue = UnitConverter.lbsToKg(weightValue);
         }

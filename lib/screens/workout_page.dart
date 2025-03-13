@@ -45,10 +45,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
     _fetchWeeklyWorkouts();
   }
 
-  // --------------------------
-  // 1) Parsing & Streak Logic
-  // --------------------------
-
   /// Safely parse 'duration' from Firestore. Could be int or double.
   int parseDuration(dynamic val) {
     if (val == null) return 0;
@@ -72,59 +68,43 @@ class _WorkoutPageState extends State<WorkoutPage> {
 
     int total = snapshot.docs.length;
     int thisMonth = 0;
-
-    // We'll accumulate durations in MINUTES now
     int durationSumInMinutes = 0;
-
     List<DateTime> sessions = [];
 
     for (var doc in snapshot.docs) {
       final Timestamp ts = doc['timestamp'];
       final DateTime dt = ts.toDate();
 
-      // 1) Count if in this month
       if (dt.isAfter(startOfMonth)) {
         thisMonth++;
       }
 
-      // 2) Convert doc['duration'] from SECONDS to MINUTES
-      final int secs = parseDuration(doc['duration']); // parse as int
-      final int minutes = secs ~/ 60; // integer division
+      final int secs = parseDuration(doc['duration']);
+      final int minutes = secs ~/ 60;
       durationSumInMinutes += minutes;
 
-      // 3) Store session time for streak logic
       sessions.add(dt);
     }
 
-    // Sort sessions by ascending time for streak calculations
     sessions.sort();
-
-    // Calculate average in minutes
     double average = (total > 0) ? (durationSumInMinutes / total) : 0.0;
-
-    // Allowed rest days (from your existing code)
     int allowedMiss = 7 - expectedWorkoutDays;
-
-    // Streaks
     int curStreak = _calculateCurrentStreak(sessions, allowedMiss);
     int maxStreak = _calculateLongestStreak(sessions, allowedMiss);
 
     setState(() {
       totalWorkouts = total;
       workoutsThisMonth = thisMonth;
-      totalDuration = durationSumInMinutes; // total duration in minutes
-      avgDuration = average; // average in minutes (double)
+      totalDuration = durationSumInMinutes;
+      avgDuration = average;
       currentStreak = curStreak;
       longestStreak = maxStreak;
     });
   }
 
-  /// Current streak: start from the last session, go backward until gap > allowedMiss
   int _calculateCurrentStreak(List<DateTime> sessions, int allowedMiss) {
     if (sessions.isEmpty) return 0;
-
     int streak = 1;
-    // Move backward from the last session
     for (int i = sessions.length - 1; i > 0; i--) {
       final gap = sessions[i].difference(sessions[i - 1]).inDays;
       if ((gap - 1) <= allowedMiss) {
@@ -136,14 +116,11 @@ class _WorkoutPageState extends State<WorkoutPage> {
     return streak;
   }
 
-  /// Longest streak: forward pass, reset when gap > allowedMiss
   int _calculateLongestStreak(List<DateTime> sessions, int allowedMiss) {
     if (sessions.isEmpty) return 0;
     if (sessions.length == 1) return 1;
-
     int maxStreak = 1;
     int streak = 1;
-
     for (int i = 1; i < sessions.length; i++) {
       final gap = sessions[i].difference(sessions[i - 1]).inDays;
       if ((gap - 1) <= allowedMiss) {
@@ -158,12 +135,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
     return maxStreak;
   }
 
-  // --------------------------
-  // 2) Weekly Bar Chart
-  // --------------------------
   Future<void> _fetchWeeklyWorkouts() async {
     if (user == null) return;
-
     final snapshot = await _firestore
         .collection('workouts')
         .where('userId', isEqualTo: user!.uid)
@@ -171,12 +144,10 @@ class _WorkoutPageState extends State<WorkoutPage> {
         .get();
 
     Map<DateTime, int> weeklyCounts = {};
-
     for (var doc in snapshot.docs) {
       final Timestamp ts = doc['timestamp'];
       final DateTime dt = ts.toDate();
       final monday = _mondayOfWeek(dt);
-
       weeklyCounts[monday] = (weeklyCounts[monday] ?? 0) + 1;
     }
 
@@ -191,7 +162,7 @@ class _WorkoutPageState extends State<WorkoutPage> {
           barRods: [
             BarChartRodData(
               toY: count.toDouble(),
-              color: Theme.of(context).colorScheme.primary, // Updated
+              color: Theme.of(context).colorScheme.primary,
               width: 16,
               borderRadius: BorderRadius.circular(4),
             ),
@@ -200,14 +171,12 @@ class _WorkoutPageState extends State<WorkoutPage> {
       );
     }
 
-    // Calculate maxY based on the highest bar
     double tempMaxY = 0;
     for (var g in groups) {
       if (g.barRods.isNotEmpty) {
         tempMaxY = math.max(tempMaxY, g.barRods.first.toY);
       }
     }
-    // If above 10, round up to next multiple of 5
     if (tempMaxY > 10) {
       final remainder = tempMaxY % 5;
       if (remainder != 0) {
@@ -218,20 +187,15 @@ class _WorkoutPageState extends State<WorkoutPage> {
     setState(() {
       sortedWeekDates = allMondays;
       weeklyBarGroups = groups;
-      // If still below 10, we want at least 10 on the Y axis
       maxYForChart = tempMaxY < 10 ? 10 : tempMaxY;
     });
   }
 
-  /// Monday of the given date's week
   DateTime _mondayOfWeek(DateTime date) {
     int delta = date.weekday - DateTime.monday;
     return DateTime(date.year, date.month, date.day).subtract(Duration(days: delta));
   }
 
-  // --------------------------
-  // 3) UI Helpers
-  // --------------------------
   String _formatTimestamp(Timestamp? ts) {
     if (ts == null) return "Unknown date";
     final dt = ts.toDate();
@@ -293,13 +257,12 @@ class _WorkoutPageState extends State<WorkoutPage> {
     return Container(
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor, // Updated
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title row with optional settings icon
           Row(
             children: [
               Expanded(
@@ -335,60 +298,12 @@ class _WorkoutPageState extends State<WorkoutPage> {
     );
   }
 
-  // --------------------------
-  // 4) Build UI
-  // --------------------------
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Updated
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor, // Updated
-        surfaceTintColor: Colors.transparent,
-        iconTheme: Theme.of(context).appBarTheme.iconTheme, // Updated
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text('Workout Log', style: Theme.of(context).appBarTheme.titleTextStyle),
-            IconButton(
-              icon: Icon(Icons.history, color: Theme.of(context).colorScheme.primary), // Updated
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => WorkoutHistoryPage()),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildStartWorkoutButton(context),
-              SizedBox(height: 20),
-              _buildWorkoutStats(),
-              SizedBox(height: 20),
-              _buildFavoriteWorkoutsTile(),
-              SizedBox(height: 20),
-              _buildWeeklyChart(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildStartWorkoutButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: Theme.of(context).colorScheme.primary, // Updated
+          backgroundColor: Theme.of(context).colorScheme.primary,
         ),
         onPressed: () {
           Navigator.push(
@@ -407,7 +322,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
       children: [
         Text("Workout Stats", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.bold)),
         SizedBox(height: 10),
-        // Row 1
         Row(
           children: [
             _buildExpandedStatCard(title: "Total Workouts", value: "$totalWorkouts"),
@@ -416,7 +330,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
           ],
         ),
         SizedBox(height: 8),
-        // Row 2
         Row(
           children: [
             _buildExpandedStatCard(title: "Avg. Duration", value: "${avgDuration.toStringAsFixed(0)} min"),
@@ -425,7 +338,6 @@ class _WorkoutPageState extends State<WorkoutPage> {
           ],
         ),
         SizedBox(height: 8),
-        // Row 3
         Row(
           children: [
             _buildExpandedStatCard(
@@ -456,12 +368,18 @@ class _WorkoutPageState extends State<WorkoutPage> {
         width: double.infinity,
         padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor, // Updated
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(
-          "Favorite Workouts",
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Favorite Workouts",
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Icon(Icons.chevron_right, color: Theme.of(context).colorScheme.primary),
+          ],
         ),
       ),
     );
@@ -483,8 +401,8 @@ class _WorkoutPageState extends State<WorkoutPage> {
               borderData: FlBorderData(
                 show: true,
                 border: Border(
-                  bottom: BorderSide(color: Theme.of(context).dividerColor, width: 1), // Updated
-                  left: BorderSide(color: Theme.of(context).dividerColor, width: 1), // Updated
+                  bottom: BorderSide(color: Theme.of(context).dividerColor, width: 1),
+                  left: BorderSide(color: Theme.of(context).dividerColor, width: 1),
                   right: BorderSide(color: Colors.transparent),
                   top: BorderSide(color: Colors.transparent),
                 ),
@@ -532,6 +450,51 @@ class _WorkoutPageState extends State<WorkoutPage> {
           ),
         ),
       ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        surfaceTintColor: Colors.transparent,
+        iconTheme: Theme.of(context).appBarTheme.iconTheme,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Workout Log', style: Theme.of(context).appBarTheme.titleTextStyle),
+            IconButton(
+              icon: Icon(Icons.history, color: Theme.of(context).colorScheme.primary),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => WorkoutHistoryPage()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStartWorkoutButton(context),
+              SizedBox(height: 20),
+              _buildWorkoutStats(),
+              SizedBox(height: 20),
+              _buildFavoriteWorkoutsTile(),
+              SizedBox(height: 20),
+              _buildWeeklyChart(),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
