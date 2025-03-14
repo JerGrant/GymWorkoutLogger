@@ -40,20 +40,24 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   final ScrollController _scrollController = ScrollController();
 
   final TextEditingController _workoutNameController = TextEditingController();
-  final TextEditingController _workoutDescriptionController = TextEditingController();
+  final TextEditingController _workoutDescriptionController =
+  TextEditingController();
 
   @override
   void initState() {
     super.initState();
 
+    // Preload data if provided
     if (widget.preloadedWorkout != null) {
       _workoutName = widget.preloadedWorkout!['name'] ?? "Untitled Workout";
-      _workoutDescription = widget.preloadedWorkout!['description'] ?? "";
+      _workoutDescription =
+          widget.preloadedWorkout!['description'] ?? "";
       _selectedExercises = widget.preloadedWorkout!['exercises'] != null
-          ? List<Map<String, dynamic>>.from(widget.preloadedWorkout!['exercises'])
+          ? List<Map<String, dynamic>>.from(
+          widget.preloadedWorkout!['exercises'])
           : [];
 
-      // Initialize controllers & focusNodes for each set.
+      // Initialize controllers & focusNodes for each set
       for (var exercise in _selectedExercises) {
         exercise['controllers'] ??= [];
         exercise['focusNodes'] ??= [];
@@ -61,7 +65,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           Map<String, TextEditingController> ctrl = {};
           Map<String, FocusNode> nodes = {};
 
-          // Initialize rest-timer fields.
+          // Initialize rest-timer fields
           exercise['sets'][i]['isSetComplete'] ??= false;
           exercise['sets'][i]['restRemaining'] ??= 120;
           exercise['sets'][i]['restTotal'] ??= 120;
@@ -140,8 +144,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               }
             });
           }
-
-          // Optionally handle duration if needed
+          // Duration field if needed, same pattern
 
           exercise['controllers'].add(ctrl);
           exercise['focusNodes'].add(nodes);
@@ -149,6 +152,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       }
     }
 
+    // Initialize text controllers
     _workoutNameController.text = _workoutName;
     _workoutDescriptionController.text = _workoutDescription;
 
@@ -170,7 +174,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   Future<void> _startWorkout() async {
     if (user == null) return;
 
-    // Remove ephemeral keys.
+    // Remove ephemeral keys before storing
     List<Map<String, dynamic>> cleanedExercises = _selectedExercises.map((exercise) {
       final copy = Map<String, dynamic>.from(exercise);
       copy.remove('controllers');
@@ -192,7 +196,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       'exercises': cleanedExercises,
     });
     _startMainTimer();
-    print("Created doc: ${_workoutRef!.id}");
+    debugPrint("Created doc: ${_workoutRef!.id}");
   }
 
   void _startMainTimer() {
@@ -260,7 +264,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               ValueListenableBuilder<int>(
                 valueListenable: _topTimerNotifier,
                 builder: (context, value, child) {
-                  double fractionLeft = _topTimerTotal == 0 ? 0 : value / _topTimerTotal;
+                  double fractionLeft =
+                  _topTimerTotal == 0 ? 0 : value / _topTimerTotal;
                   return LinearProgressIndicator(
                     value: fractionLeft,
                     minHeight: 8,
@@ -290,7 +295,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                     onPressed: () {
                       setState(() {
                         _topTimerTotal = max<int>(0, _topTimerTotal - 30);
-                        _topTimerNotifier.value = max<int>(0, _topTimerNotifier.value - 30);
+                        _topTimerNotifier.value =
+                            max<int>(0, _topTimerNotifier.value - 30);
                       });
                     },
                     child: const Text("-30s"),
@@ -333,22 +339,22 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   // --- FINISH/CANCEL WORKOUT ---
   Future<void> _finishWorkout() async {
     _timer?.cancel();
-    print("Finishing workout with duration: $_duration");
+    debugPrint("Finishing workout with duration: $_duration");
 
-    // Process each exercise's sets.
+    // Process each exercise's sets
     for (int i = 0; i < _selectedExercises.length; i++) {
       for (int j = 0; j < (_selectedExercises[i]['sets']?.length ?? 0); j++) {
         var repsCtrl = _selectedExercises[i]['controllers'][j]['reps'];
         var weightCtrl = _selectedExercises[i]['controllers'][j]['weight'];
         var distCtrl = _selectedExercises[i]['controllers'][j]['distance'];
 
-        // Reps update.
+        // Reps update
         if (repsCtrl != null) {
           int reps = int.tryParse(repsCtrl.text) ?? 0;
           _updateReps(i, j, reps);
         }
 
-        // Weight update.
+        // Weight update
         if (weightCtrl != null) {
           double w = double.tryParse(weightCtrl.text) ?? 0.0;
           final unitProvider = Provider.of<UnitProvider>(context, listen: false);
@@ -358,11 +364,11 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           _updateWeight(i, j, w);
         }
 
-        // Distance update.
+        // Distance update
         if (distCtrl != null) {
           double d = double.tryParse(distCtrl.text) ?? 0.0;
           final unitProvider = Provider.of<UnitProvider>(context, listen: false);
-          // If user is in metric, the input is in km. Convert to miles for storage.
+          // If user is in metric, the input is in km; convert to miles
           if (unitProvider.useMetric) {
             d = UnitConverter.kmToMiles(d);
           }
@@ -371,7 +377,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       }
     }
 
-    // Clean out ephemeral keys.
+    // Clean out ephemeral keys
     List<Map<String, dynamic>> cleanedExercises = _selectedExercises.map((exercise) {
       var cleaned = Map<String, dynamic>.from(exercise);
       cleaned.remove("controllers");
@@ -392,12 +398,12 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           'description': _workoutDescription,
           'exercises': cleanedExercises,
         });
-        print("Workout document updated successfully.");
+        debugPrint("Workout document updated successfully.");
       } else {
-        print("Workout document reference is null.");
+        debugPrint("Workout document reference is null.");
       }
     } catch (e) {
-      print("Error updating workout document: $e");
+      debugPrint("Error updating workout document: $e");
     }
 
     Navigator.pop(context);
@@ -417,9 +423,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     for (var field in fields) {
       if (newExercise.containsKey(field)) {
         if (newExercise[field] is List) {
-          newExercise[field] = (newExercise[field] as List)
-              .map((e) => e.toString())
-              .join(', ');
+          newExercise[field] =
+              (newExercise[field] as List).map((e) => e.toString()).join(', ');
         } else if (newExercise[field] == null) {
           newExercise[field] = '';
         }
@@ -442,9 +447,11 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           onExercisesSelected: (selected) {
             setState(() {
               for (var exercise in selected) {
-                Map<String, dynamic> fixedExercise = convertExerciseFields(exercise);
+                Map<String, dynamic> fixedExercise =
+                convertExerciseFields(exercise);
                 fixedExercise['id'] = exercise['id'];
-                fixedExercise['controllers'] = <Map<String, TextEditingController>>[];
+                fixedExercise['controllers'] =
+                <Map<String, TextEditingController>>[];
                 fixedExercise['focusNodes'] = <Map<String, FocusNode>>[];
                 _selectedExercises.add(fixedExercise);
               }
@@ -501,7 +508,9 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         'restTimer': null,
         'isRestActive': false,
       };
-    } else if (lower.contains("stretching") || lower.contains("mobility") || lower == "duration") {
+    } else if (lower.contains("stretching") ||
+        lower.contains("mobility") ||
+        lower == "duration") {
       return {
         'duration': null,
         'isSetComplete': false,
@@ -624,15 +633,20 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     String initialWeightText = "";
     String initialDistanceText = "";
 
+    // If no sets yet, try to prefill from last workout
     if (lastSetIndex < 0) {
       final prefill = await _getPrefillFromLastWorkout(exercise['id']);
       initialRepsText = prefill['reps'] ?? "";
       initialWeightText = prefill['weight'] ?? "";
       initialDistanceText = prefill['distance'] ?? "";
     } else {
-      initialRepsText = exercise['controllers'][lastSetIndex]['reps']?.text ?? "";
-      initialWeightText = exercise['controllers'][lastSetIndex]['weight']?.text ?? "";
-      initialDistanceText = exercise['controllers'][lastSetIndex]['distance']?.text ?? "";
+      // Otherwise copy from last set in this workout
+      initialRepsText =
+          exercise['controllers'][lastSetIndex]['reps']?.text ?? "";
+      initialWeightText =
+          exercise['controllers'][lastSetIndex]['weight']?.text ?? "";
+      initialDistanceText =
+          exercise['controllers'][lastSetIndex]['distance']?.text ?? "";
     }
 
     Map<String, TextEditingController> newControllers = {};
@@ -677,7 +691,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     }
 
     if (newSet.containsKey('distance')) {
-      newControllers['distance'] = TextEditingController(text: initialDistanceText);
+      newControllers['distance'] =
+          TextEditingController(text: initialDistanceText);
       newFocusNodes['distance'] = FocusNode();
       newFocusNodes['distance']!.addListener(() {
         if (newFocusNodes['distance']!.hasFocus) {
@@ -728,21 +743,21 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
   }
 
-  // Reps update.
+  // Reps update
   void _updateReps(int exerciseIndex, int setIndex, int reps) {
     setState(() {
       _selectedExercises[exerciseIndex]['sets'][setIndex]['reps'] = reps;
     });
   }
 
-  // Weight update.
+  // Weight update
   void _updateWeight(int exerciseIndex, int setIndex, double weight) {
     setState(() {
       _selectedExercises[exerciseIndex]['sets'][setIndex]['weight'] = weight;
     });
   }
 
-  // Distance update.
+  // Distance update
   void _updateDistance(int exerciseIndex, int setIndex, double dist) {
     setState(() {
       _selectedExercises[exerciseIndex]['sets'][setIndex]['distance'] = dist;
@@ -822,11 +837,13 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         title: Text(
           "Confirm Value",
-          style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle()),
+          style: (Theme.of(context).textTheme.bodyMedium ??
+              const TextStyle()),
         ),
         content: Text(
           message,
-          style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
+          style: (Theme.of(context).textTheme.bodyMedium ??
+              const TextStyle())
               .copyWith(color: Theme.of(context).hintColor),
         ),
         actions: [
@@ -840,17 +857,21 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           ),
         ],
       ),
-    )) ?? false;
+    )) ??
+        false;
   }
 
-  Future<void> _verifyAndUpdateReps(int exerciseIndex, int setIndex, String valueStr) async {
+  Future<void> _verifyAndUpdateReps(
+      int exerciseIndex, int setIndex, String valueStr) async {
     int reps = int.tryParse(valueStr) ?? 0;
     if (reps > 100) {
-      bool confirmed = await _showVerificationDialog("You entered over 100 reps. Are you sure?");
+      bool confirmed =
+      await _showVerificationDialog("You entered over 100 reps. Are you sure?");
       if (!confirmed) {
         setState(() {
           _selectedExercises[exerciseIndex]['sets'][setIndex]['reps'] = null;
-          _selectedExercises[exerciseIndex]['controllers'][setIndex]['reps']?.text = "";
+          _selectedExercises[exerciseIndex]['controllers'][setIndex]['reps']
+              ?.text = "";
         });
         return;
       }
@@ -858,18 +879,21 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     _updateReps(exerciseIndex, setIndex, reps);
   }
 
-  Future<void> _verifyAndUpdateWeight(int exerciseIndex, int setIndex, String valueStr) async {
+  Future<void> _verifyAndUpdateWeight(
+      int exerciseIndex, int setIndex, String valueStr) async {
     double weightVal = double.tryParse(valueStr) ?? 0.0;
     final unitProvider = Provider.of<UnitProvider>(context, listen: false);
     if (unitProvider.useMetric) {
       weightVal = UnitConverter.kgToLbs(weightVal);
     }
     if (weightVal > 500) {
-      bool confirmed = await _showVerificationDialog("You entered over 500 lbs. Are you sure?");
+      bool confirmed = await _showVerificationDialog(
+          "You entered over 500 lbs. Are you sure?");
       if (!confirmed) {
         setState(() {
           _selectedExercises[exerciseIndex]['sets'][setIndex]['weight'] = null;
-          _selectedExercises[exerciseIndex]['controllers'][setIndex]['weight']?.text = "";
+          _selectedExercises[exerciseIndex]['controllers'][setIndex]['weight']
+              ?.text = "";
         });
         return;
       }
@@ -877,19 +901,23 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     _updateWeight(exerciseIndex, setIndex, weightVal);
   }
 
-  Future<void> _verifyAndUpdateDistance(int exerciseIndex, int setIndex, String valueStr) async {
+  Future<void> _verifyAndUpdateDistance(
+      int exerciseIndex, int setIndex, String valueStr) async {
     double distVal = double.tryParse(valueStr) ?? 0.0;
     final unitProvider = Provider.of<UnitProvider>(context, listen: false);
-    // If user is in metric, their input is in km; convert to miles for storage.
+    // If user is in metric, their input is in km; convert to miles
     if (unitProvider.useMetric) {
       distVal = UnitConverter.kmToMiles(distVal);
     }
     if (distVal > 100) {
-      bool confirmed = await _showVerificationDialog("You entered over 100 miles. Are you sure?");
+      bool confirmed = await _showVerificationDialog(
+          "You entered over 100 miles. Are you sure?");
       if (!confirmed) {
         setState(() {
-          _selectedExercises[exerciseIndex]['sets'][setIndex]['distance'] = null;
-          _selectedExercises[exerciseIndex]['controllers'][setIndex]['distance']?.text = "";
+          _selectedExercises[exerciseIndex]['sets'][setIndex]['distance'] =
+          null;
+          _selectedExercises[exerciseIndex]['controllers'][setIndex]['distance']
+              ?.text = "";
         });
         return;
       }
@@ -997,7 +1025,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           if (unitProvider.useMetric) {
             rawWeight = UnitConverter.lbsToKg(rawWeight);
           }
-          String weightStr = rawWeight == 0.0 ? "-" : rawWeight.toStringAsFixed(1);
+          String weightStr =
+          rawWeight == 0.0 ? "-" : rawWeight.toStringAsFixed(1);
           return "Set $setNum: $weightStr$unitLabel x $repsVal reps";
         }).join("\n");
 
@@ -1005,23 +1034,29 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           margin: const EdgeInsets.symmetric(vertical: 6),
           color: Theme.of(context).cardColor,
           child: ListTile(
-            leading: showTrophy ? const Icon(Icons.emoji_events, color: Colors.amber) : null,
+            leading: showTrophy
+                ? const Icon(Icons.emoji_events, color: Colors.amber)
+                : null,
             title: Text(
               "${date.toLocal().toString().split('.')[0]}",
-              style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
-                  .copyWith(color: Theme.of(context).textTheme.bodyMedium?.color),
+              style: (Theme.of(context).textTheme.bodyMedium ??
+                  const TextStyle())
+                  .copyWith(
+                  color: Theme.of(context).textTheme.bodyMedium?.color),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   "Volume: ${volume.toStringAsFixed(1)} $unitLabel",
-                  style: (Theme.of(context).textTheme.bodySmall ?? const TextStyle())
+                  style: (Theme.of(context).textTheme.bodySmall ??
+                      const TextStyle())
                       .copyWith(color: Theme.of(context).hintColor),
                 ),
                 Text(
                   setDetails,
-                  style: (Theme.of(context).textTheme.bodySmall ?? const TextStyle())
+                  style: (Theme.of(context).textTheme.bodySmall ??
+                      const TextStyle())
                       .copyWith(color: Theme.of(context).hintColor),
                 ),
               ],
@@ -1155,6 +1190,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            // Workout name & description
             TextField(
               decoration: const InputDecoration(
                 labelText: 'Workout Name',
@@ -1173,6 +1209,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               child: const Text('Add Exercise'),
             ),
             const SizedBox(height: 8),
+            // List of selected exercises
             Expanded(
               child: ListView.builder(
                 controller: _scrollController,
@@ -1184,30 +1221,46 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                   exercise['focusNodes'] ??= [];
 
                   return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    // Slightly smaller vertical margin
                     child: Padding(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 12,
+                      ), // Tighter padding
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Header row.
+                          // Header row: exercise name, add set, remove exercise
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      exercise['name'] ?? 'Unnamed Exercise',
-                                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                    ),
-                                    Text(
-                                      "${exercise['category'] ?? 'Unknown Category'} | ${exercise['bodyPart'] ?? 'Unknown Body Part'}"
-                                          "${exercise['subcategory'] != null ? ' (${exercise['subcategory']})' : ''}",
-                                      style: const TextStyle(color: Colors.grey),
-                                    ),
-                                  ],
+                                child: InkWell(
+                                  onTap: () => _showExerciseHistoryForExercise(
+                                    exercise,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        exercise['name'] ?? 'Unnamed Exercise',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        "${exercise['category'] ?? 'Unknown Category'} | ${exercise['bodyPart'] ?? 'Unknown Body Part'}"
+                                            "${exercise['subcategory'] != null ? ' (${exercise['subcategory']})' : ''}",
+                                        style: TextStyle(
+                                          color: Colors.grey[400],
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                               IconButton(
@@ -1222,16 +1275,24 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                               ),
                             ],
                           ),
-                          // Sets list.
+                          // All sets for this exercise
                           Column(
                             children: List.generate(
                               exercise['sets'].length,
                                   (setIndex) {
                                 var set = exercise['sets'][setIndex];
-                                Map<String, TextEditingController> controllers = exercise['controllers'][setIndex];
-                                Map<String, FocusNode> focusNodes = exercise['focusNodes'][setIndex];
+                                Map<String, TextEditingController> controllers =
+                                exercise['controllers'][setIndex];
+                                Map<String, FocusNode> focusNodes =
+                                exercise['focusNodes'][setIndex];
 
-                                final bool isComplete = (set['isSetComplete'] == true);
+                                final bool isComplete =
+                                (set['isSetComplete'] == true);
+
+                                final hasReps = set.containsKey('reps');
+                                final hasWeight = set.containsKey('weight');
+                                final hasDistance = set.containsKey('distance');
+                                final hasDuration = set.containsKey('duration');
 
                                 return Container(
                                   margin: const EdgeInsets.symmetric(vertical: 4),
@@ -1239,170 +1300,339 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                       ? BoxDecoration(
                                     color: primaryColor.withOpacity(0.1),
                                     border: Border.all(
-                                      color: primaryColor.withOpacity(0.4),
+                                      color:
+                                      primaryColor.withOpacity(0.4),
                                       width: 1,
                                     ),
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius:
+                                    BorderRadius.circular(6),
                                   )
                                       : null,
                                   padding: const EdgeInsets.all(8),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
                                     children: [
+                                      // Row for checkbox, set #, add/remove set
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                         children: [
                                           Row(
                                             children: [
                                               Checkbox(
                                                 value: set['isSetComplete'] ?? false,
-                                                onChanged: (val) => _onSetCheckChanged(exerciseIndex, setIndex, val),
+                                                onChanged: (val) =>
+                                                    _onSetCheckChanged(
+                                                        exerciseIndex,
+                                                        setIndex,
+                                                        val),
+                                                visualDensity:
+                                                VisualDensity.compact,
                                               ),
-                                              Text("Set ${setIndex + 1}"),
+                                              Text(
+                                                "Set ${setIndex + 1}",
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                ),
+                                              ),
                                             ],
                                           ),
-                                          Expanded(
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                          Row(
+                                            children: [
+                                              IconButton(
+                                                icon: const Icon(Icons.add,
+                                                    color: Colors.green),
+                                                onPressed: () =>
+                                                    _addSet(exerciseIndex),
+                                                tooltip: '+ Another Set',
+                                                visualDensity:
+                                                VisualDensity.compact,
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.remove,
+                                                    color: Colors.red),
+                                                onPressed: () => _removeSet(
+                                                    exerciseIndex, setIndex),
+                                                tooltip: 'Remove This Set',
+                                                visualDensity:
+                                                VisualDensity.compact,
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+
+                                      // Slight spacing before fields
+                                      const SizedBox(height: 4),
+
+                                      // 2 rows for fields
+                                      // Row 1: Reps + Weight
+                                      // Row 2: Distance + Duration
+                                      Column(
+                                        children: [
+                                          // If we have reps or weight
+                                          if (hasReps || hasWeight)
+                                            Row(
                                               children: [
-                                                if (set.containsKey('reps'))
-                                                  SizedBox(
-                                                    width: 50,
+                                                if (hasReps)
+                                                  Expanded(
                                                     child: TextField(
-                                                      decoration: const InputDecoration(labelText: "Reps"),
-                                                      keyboardType: TextInputType.number,
-                                                      controller: controllers['reps'],
-                                                      focusNode: focusNodes['reps'],
+                                                      controller:
+                                                      controllers['reps'],
+                                                      focusNode:
+                                                      focusNodes['reps'],
+                                                      keyboardType:
+                                                      TextInputType.number,
                                                       onSubmitted: (value) {
-                                                        _verifyAndUpdateReps(exerciseIndex, setIndex, value);
-                                                      },
-                                                    ),
-                                                  ),
-                                                if (set.containsKey('weight'))
-                                                  Consumer<UnitProvider>(
-                                                    builder: (context, unitProvider, child) {
-                                                      return SizedBox(
-                                                        width: 70,
-                                                        child: TextField(
-                                                          decoration: InputDecoration(
-                                                            labelText: "Weight (${unitProvider.useMetric ? 'kg' : 'lbs'})",
-                                                          ),
-                                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                          controller: controllers['weight'],
-                                                          focusNode: focusNodes['weight'],
-                                                          onSubmitted: (value) {
-                                                            _verifyAndUpdateWeight(exerciseIndex, setIndex, value);
-                                                          },
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                if (set.containsKey('distance'))
-                                                  Consumer<UnitProvider>(
-                                                    builder: (context, unitProvider, child) {
-                                                      return SizedBox(
-                                                        width: 70,
-                                                        child: TextField(
-                                                          decoration: InputDecoration(
-                                                            labelText: unitProvider.useMetric
-                                                                ? "Distance (km)"
-                                                                : "Distance (mi)",
-                                                          ),
-                                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                          controller: controllers['distance'],
-                                                          focusNode: focusNodes['distance'],
-                                                          onSubmitted: (value) {
-                                                            _verifyAndUpdateDistance(exerciseIndex, setIndex, value);
-                                                          },
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                if (set.containsKey('duration'))
-                                                  SizedBox(
-                                                    width: 70,
-                                                    child: TextField(
-                                                      decoration: const InputDecoration(labelText: "Duration (sec)"),
-                                                      keyboardType: TextInputType.number,
-                                                      onChanged: (value) {
-                                                        _updateDuration(
+                                                        _verifyAndUpdateReps(
                                                           exerciseIndex,
                                                           setIndex,
-                                                          int.tryParse(value) ?? 0,
+                                                          value,
+                                                        );
+                                                      },
+                                                      // Compact styling:
+                                                      decoration:
+                                                      InputDecoration(
+                                                        labelText: "Reps",
+                                                        isDense: true,
+                                                        contentPadding:
+                                                        const EdgeInsets
+                                                            .symmetric(
+                                                          vertical: 6,
+                                                          horizontal: 8,
+                                                        ),
+                                                      ),
+                                                      style: const TextStyle(
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                if (hasReps && hasWeight)
+                                                  const SizedBox(width: 8),
+                                                if (hasWeight)
+                                                  Expanded(
+                                                    child: Consumer<UnitProvider>(
+                                                      builder: (context,
+                                                          unitProvider, child) {
+                                                        return TextField(
+                                                          controller:
+                                                          controllers[
+                                                          'weight'],
+                                                          focusNode: focusNodes[
+                                                          'weight'],
+                                                          keyboardType:
+                                                          const TextInputType
+                                                              .numberWithOptions(
+                                                              decimal: true),
+                                                          onSubmitted: (value) {
+                                                            _verifyAndUpdateWeight(
+                                                              exerciseIndex,
+                                                              setIndex,
+                                                              value,
+                                                            );
+                                                          },
+                                                          decoration:
+                                                          InputDecoration(
+                                                            labelText: unitProvider
+                                                                .useMetric
+                                                                ? "Wt (kg)"
+                                                                : "Wt (lbs)",
+                                                            isDense: true,
+                                                            contentPadding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                              vertical: 6,
+                                                              horizontal: 8,
+                                                            ),
+                                                          ),
+                                                          style:
+                                                          const TextStyle(
+                                                            fontSize: 14,
+                                                          ),
                                                         );
                                                       },
                                                     ),
                                                   ),
                                               ],
                                             ),
-                                          ),
-                                          Row(
-                                            children: [
-                                              IconButton(
-                                                icon: const Icon(Icons.add, color: Colors.green),
-                                                onPressed: () => _addSet(exerciseIndex),
-                                                tooltip: '+ Another Set',
-                                              ),
-                                              IconButton(
-                                                icon: const Icon(Icons.remove, color: Colors.red),
-                                                onPressed: () => _removeSet(exerciseIndex, setIndex),
-                                                tooltip: 'Remove This Set',
-                                              ),
-                                            ],
-                                          ),
+                                          // Spacing if we have a second row
+                                          if ((hasReps || hasWeight) &&
+                                              (hasDistance || hasDuration))
+                                            const SizedBox(height: 6),
+                                          // Row 2: Distance + Duration
+                                          if (hasDistance || hasDuration)
+                                            Row(
+                                              children: [
+                                                if (hasDistance)
+                                                  Expanded(
+                                                    child: Consumer<UnitProvider>(
+                                                      builder: (context,
+                                                          unitProvider, child) {
+                                                        return TextField(
+                                                          controller:
+                                                          controllers[
+                                                          'distance'],
+                                                          focusNode: focusNodes[
+                                                          'distance'],
+                                                          keyboardType:
+                                                          const TextInputType
+                                                              .numberWithOptions(
+                                                              decimal: true),
+                                                          onSubmitted: (value) {
+                                                            _verifyAndUpdateDistance(
+                                                              exerciseIndex,
+                                                              setIndex,
+                                                              value,
+                                                            );
+                                                          },
+                                                          decoration:
+                                                          InputDecoration(
+                                                            labelText:
+                                                            unitProvider
+                                                                .useMetric
+                                                                ? "Dist (km)"
+                                                                : "Dist (mi)",
+                                                            isDense: true,
+                                                            contentPadding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                              vertical: 6,
+                                                              horizontal: 8,
+                                                            ),
+                                                          ),
+                                                          style:
+                                                          const TextStyle(
+                                                            fontSize: 14,
+                                                          ),
+                                                        );
+                                                      },
+                                                    ),
+                                                  ),
+                                                if (hasDistance && hasDuration)
+                                                  const SizedBox(width: 8),
+                                                if (hasDuration)
+                                                  Expanded(
+                                                    child: TextField(
+                                                      keyboardType:
+                                                      TextInputType.number,
+                                                      onChanged: (value) {
+                                                        _updateDuration(
+                                                          exerciseIndex,
+                                                          setIndex,
+                                                          int.tryParse(value) ??
+                                                              0,
+                                                        );
+                                                      },
+                                                      decoration:
+                                                      const InputDecoration(
+                                                        labelText: "Time (s)",
+                                                        isDense: true,
+                                                        contentPadding:
+                                                        EdgeInsets
+                                                            .symmetric(
+                                                          vertical: 6,
+                                                          horizontal: 8,
+                                                        ),
+                                                      ),
+                                                      style: const TextStyle(
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
+                                            ),
                                         ],
                                       ),
+
+                                      // If rest is active, show rest timer
                                       if (set['isRestActive'] == true)
                                         Padding(
                                           padding: const EdgeInsets.only(top: 8),
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                             children: [
                                               Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                mainAxisAlignment:
+                                                MainAxisAlignment
+                                                    .spaceBetween,
                                                 children: [
                                                   Text(
                                                     "Rest: ${_formatRestMMSS(set['restRemaining'] as int)}",
                                                     style: TextStyle(
                                                       color: primaryColor,
-                                                      fontWeight: FontWeight.w600,
+                                                      fontWeight:
+                                                      FontWeight.w600,
                                                     ),
                                                   ),
                                                   Row(
                                                     children: [
                                                       TextButton(
-                                                        style: TextButton.styleFrom(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                                                          minimumSize: Size.zero,
-                                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                          foregroundColor: primaryColor,
+                                                        style:
+                                                        TextButton.styleFrom(
+                                                          padding:
+                                                          const EdgeInsets
+                                                              .symmetric(
+                                                              horizontal: 4),
+                                                          minimumSize:
+                                                          Size.zero,
+                                                          tapTargetSize:
+                                                          MaterialTapTargetSize
+                                                              .shrinkWrap,
+                                                          foregroundColor:
+                                                          primaryColor,
                                                         ),
                                                         onPressed: () {
                                                           setState(() {
-                                                            final curr = set['restRemaining'] as int;
-                                                            final total = set['restTotal'] as int;
-                                                            set['restRemaining'] = curr + 30;
-                                                            set['restTotal'] = total + 30;
+                                                            final curr =
+                                                            set['restRemaining']
+                                                            as int;
+                                                            final total =
+                                                            set['restTotal']
+                                                            as int;
+                                                            set['restRemaining'] =
+                                                                curr + 30;
+                                                            set['restTotal'] =
+                                                                total + 30;
                                                           });
                                                         },
-                                                        child: const Text("+30s"),
+                                                        child:
+                                                        const Text("+30s"),
                                                       ),
                                                       TextButton(
-                                                        style: TextButton.styleFrom(
-                                                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                                                          minimumSize: Size.zero,
-                                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                          foregroundColor: primaryColor,
+                                                        style:
+                                                        TextButton.styleFrom(
+                                                          padding:
+                                                          const EdgeInsets
+                                                              .symmetric(
+                                                              horizontal: 4),
+                                                          minimumSize:
+                                                          Size.zero,
+                                                          tapTargetSize:
+                                                          MaterialTapTargetSize
+                                                              .shrinkWrap,
+                                                          foregroundColor:
+                                                          primaryColor,
                                                         ),
                                                         onPressed: () {
                                                           setState(() {
-                                                            final curr = set['restRemaining'] as int;
-                                                            final total = set['restTotal'] as int;
-                                                            set['restRemaining'] = max<int>(0, curr - 30);
-                                                            set['restTotal'] = max<int>(0, total - 30);
+                                                            final curr =
+                                                            set['restRemaining']
+                                                            as int;
+                                                            final total =
+                                                            set['restTotal']
+                                                            as int;
+                                                            set['restRemaining'] =
+                                                                max<int>(0,
+                                                                    curr - 30);
+                                                            set['restTotal'] =
+                                                                max<int>(0,
+                                                                    total - 30);
                                                           });
                                                         },
-                                                        child: const Text("-30s"),
+                                                        child:
+                                                        const Text("-30s"),
                                                       ),
                                                     ],
                                                   ),
@@ -1410,12 +1640,17 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                               ),
                                               const SizedBox(height: 4),
                                               LinearProgressIndicator(
-                                                value: (set['restTotal'] != null && (set['restTotal'] as int) > 0)
-                                                    ? (set['restRemaining'] as int) / (set['restTotal'] as int)
+                                                value: (set['restTotal'] != null &&
+                                                    (set['restTotal'] as int) >
+                                                        0)
+                                                    ? (set['restRemaining']
+                                                as int) /
+                                                    (set['restTotal'] as int)
                                                     : 0.0,
                                                 minHeight: 4,
                                                 color: primaryColor,
-                                                backgroundColor: primaryColor.withOpacity(0.2),
+                                                backgroundColor:
+                                                primaryColor.withOpacity(0.2),
                                               ),
                                             ],
                                           ),
@@ -1433,6 +1668,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 },
               ),
             ),
+            // Finish/Cancel buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
