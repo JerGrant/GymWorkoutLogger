@@ -1526,7 +1526,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                                       },
                                                       decoration:
                                                       const InputDecoration(
-                                                        labelText: "Time (s)",
+                                                        labelText: "Time (sec)",
                                                         isDense: true,
                                                         contentPadding:
                                                         EdgeInsets
