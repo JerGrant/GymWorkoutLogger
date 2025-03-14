@@ -1436,8 +1436,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                                           InputDecoration(
                                                             labelText: unitProvider
                                                                 .useMetric
-                                                                ? "Wt (kg)"
-                                                                : "Wt (lbs)",
+                                                                ? "Weight (kg)"
+                                                                : "Weight (lbs)",
                                                             isDense: true,
                                                             contentPadding:
                                                             const EdgeInsets
@@ -1491,8 +1491,8 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                                             labelText:
                                                             unitProvider
                                                                 .useMetric
-                                                                ? "Dist (km)"
-                                                                : "Dist (mi)",
+                                                                ? "Distance (km)"
+                                                                : "Distance (mi)",
                                                             isDense: true,
                                                             contentPadding:
                                                             const EdgeInsets
