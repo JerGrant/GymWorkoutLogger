@@ -8,7 +8,7 @@ import 'screens/home_page.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_provider.dart';
 import 'providers/unit_provider.dart';
-import 'providers/accessibility_provider.dart'; // <-- Import the new provider
+import 'providers/accessibility_provider.dart';
 import 'package:lottie/lottie.dart';
 
 void main() async {
@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => UnitProvider()),
-        ChangeNotifierProvider(create: (_) => AccessibilityProvider()), // <-- Add provider here
+        ChangeNotifierProvider(create: (_) => AccessibilityProvider()),
       ],
       child: Consumer2<ThemeProvider, AccessibilityProvider>(
         builder: (context, themeProvider, accessibilityProvider, _) {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class AccessibilityProvider with ChangeNotifier {
+class AccessibilityProvider extends ChangeNotifier {
   bool _isLargeText = false;
 
   bool get isLargeText => _isLargeText;

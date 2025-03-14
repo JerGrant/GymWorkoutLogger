@@ -10,6 +10,8 @@ import 'package:gymworkoutlogger/providers/unit_provider.dart';
 import 'package:gymworkoutlogger/utils/unit_converter.dart';
 
 class ProfilePage extends StatefulWidget {
+  const ProfilePage({Key? key}) : super(key: key);
+
   @override
   _ProfilePageState createState() => _ProfilePageState();
 }
@@ -32,12 +34,18 @@ class _ProfilePageState extends State<ProfilePage> {
   int inches = 0;
   double weight = 0.0;
 
+  // For metric display/edit of height:
+  double _heightInCm = 0.0;
+
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _cityController = TextEditingController();
   final TextEditingController _feetController = TextEditingController();
   final TextEditingController _inchesController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
+
+  // New: Controller for height in cm
+  final TextEditingController _cmController = TextEditingController();
 
   bool isLoading = true;
   bool isSaving = false;
@@ -125,6 +133,7 @@ class _ProfilePageState extends State<ProfilePage> {
           lastName = data['lastName'] ?? "";
           city = data['city'] ?? "";
           selectedState = data['state'] ?? "Select State";
+
           feet = data['feet'] ?? 0;
           inches = data['inches'] ?? 0;
           weight = (data['weight'] ?? 0.0).toDouble();
@@ -135,8 +144,13 @@ class _ProfilePageState extends State<ProfilePage> {
           _cityController.text = city;
           _feetController.text = feet.toString();
           _inchesController.text = inches.toString();
-          // When loading, assume the stored weight is in lbs.
+
+          // Convert lbs → kg if user is in metric mode. For now, just store lbs in DB.
           _weightController.text = weight.toString();
+
+          // Calculate height in cm for display if needed:
+          _heightInCm = (feet * 30.48) + (inches * 2.54);
+          _cmController.text = _heightInCm.toStringAsFixed(2);
         });
       }
     } catch (e) {
@@ -227,20 +241,41 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       // Get the current unit preference.
       final unitProvider = Provider.of<UnitProvider>(context, listen: false);
+
+      // Handle weight first:
       double enteredWeight = double.tryParse(_weightController.text) ?? 0.0;
-      // If the user entered weight in kg, convert it to lbs for storage.
-      if (unitProvider.isKg) {
+      if (unitProvider.useMetric) {
+        // If user typed in kg, convert to lbs for storage:
         enteredWeight = UnitConverter.kgToLbs(enteredWeight);
       }
+
+      // Handle height:
+      int finalFeet = feet;
+      int finalInches = inches;
+
+      if (unitProvider.useMetric) {
+        // If user typed in cm, convert to feet/inches for storage:
+        double cmValue = double.tryParse(_cmController.text) ?? 0.0;
+        // totalInches = cm / 2.54
+        double totalInches = cmValue / 2.54;
+        finalFeet = totalInches ~/ 12;
+        finalInches = (totalInches % 12).round();
+      } else {
+        // If user typed in feet/inches, read from those text fields:
+        finalFeet = int.tryParse(_feetController.text) ?? 0;
+        finalInches = int.tryParse(_inchesController.text) ?? 0;
+      }
+
       await _db.collection('users').doc(_user!.uid).set({
         'firstName': _firstNameController.text,
         'lastName': _lastNameController.text,
         'city': _cityController.text,
         'state': selectedState,
-        'feet': int.tryParse(_feetController.text) ?? 0,
-        'inches': int.tryParse(_inchesController.text) ?? 0,
-        'weight': enteredWeight,
+        'feet': finalFeet,
+        'inches': finalInches,
+        'weight': enteredWeight, // Always store in lbs
       }, SetOptions(merge: true));
+
       if (mounted) {
         setState(() => isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -342,88 +377,112 @@ class _ProfilePageState extends State<ProfilePage> {
 
   /// Displays read-only user info when not editing.
   Widget _buildReadOnlyFields() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          "$firstName $lastName",
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          "$city, $selectedState",
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 6),
-        Text(
-          "Height: $feet' $inches\"",
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 6),
-        Consumer<UnitProvider>(
-          builder: (context, unitProvider, child) {
-            double displayWeight = unitProvider.isKg ? UnitConverter.lbsToKg(weight) : weight;
-            String unitLabel = unitProvider.isKg ? "kg" : "lbs";
-            return Text(
-              "Weight: ${displayWeight.toStringAsFixed(2)} $unitLabel",
+    return Consumer<UnitProvider>(
+      builder: (context, unitProvider, child) {
+        double displayWeight = unitProvider.useMetric ? UnitConverter.lbsToKg(weight) : weight;
+        String weightUnitLabel = unitProvider.useMetric ? "kg" : "lbs";
+
+        // Convert feet/inches to cm if metric:
+        String heightText;
+        if (unitProvider.useMetric) {
+          double cmVal = (feet * 30.48) + (inches * 2.54);
+          heightText = "${cmVal.toStringAsFixed(2)} cm";
+        } else {
+          heightText = "$feet' $inches\"";
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "$firstName $lastName",
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "$city, $selectedState",
               style: Theme.of(context).textTheme.bodyMedium,
-            );
-          },
-        ),
-      ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "Height: $heightText",
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "Weight: ${displayWeight.toStringAsFixed(2)} $weightUnitLabel",
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        );
+      },
     );
   }
 
   /// Displays the full editable fields when in edit mode.
   Widget _buildEditableFields() {
-    return Column(
-      children: [
-        TextField(
-          controller: _firstNameController,
-          decoration: const InputDecoration(labelText: "First Name"),
-        ),
-        TextField(
-          controller: _lastNameController,
-          decoration: const InputDecoration(labelText: "Last Name"),
-        ),
-        TextField(
-          controller: _cityController,
-          decoration: const InputDecoration(labelText: "City"),
-        ),
-        DropdownButton<String>(
-          value: selectedState,
-          items: states.map((state) {
-            return DropdownMenuItem(value: state, child: Text(state));
-          }).toList(),
-          onChanged: (value) {
-            if (isEditing) {
-              setState(() => selectedState = value!);
-            }
-          },
-        ),
-        TextField(
-          controller: _feetController,
-          decoration: const InputDecoration(labelText: "Feet"),
-          keyboardType: TextInputType.number,
-        ),
-        TextField(
-          controller: _inchesController,
-          decoration: const InputDecoration(labelText: "Inches"),
-          keyboardType: TextInputType.number,
-        ),
-        Consumer<UnitProvider>(
-          builder: (context, unitProvider, child) {
-            return TextField(
+    return Consumer<UnitProvider>(
+      builder: (context, unitProvider, child) {
+        return Column(
+          children: [
+            TextField(
+              controller: _firstNameController,
+              decoration: const InputDecoration(labelText: "First Name"),
+            ),
+            TextField(
+              controller: _lastNameController,
+              decoration: const InputDecoration(labelText: "Last Name"),
+            ),
+            TextField(
+              controller: _cityController,
+              decoration: const InputDecoration(labelText: "City"),
+            ),
+            DropdownButton<String>(
+              value: selectedState,
+              items: states.map((state) {
+                return DropdownMenuItem(value: state, child: Text(state));
+              }).toList(),
+              onChanged: (value) {
+                if (isEditing) {
+                  setState(() => selectedState = value!);
+                }
+              },
+            ),
+            // Now handle height differently depending on unit preference:
+            if (!unitProvider.useMetric) ...[
+              // Show feet/inches fields
+              TextField(
+                controller: _feetController,
+                decoration: const InputDecoration(labelText: "Feet"),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: _inchesController,
+                decoration: const InputDecoration(labelText: "Inches"),
+                keyboardType: TextInputType.number,
+              ),
+            ] else ...[
+              // Show a single text field for cm
+              TextField(
+                controller: _cmController,
+                decoration: const InputDecoration(labelText: "Height (cm)"),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+            ],
+            // Weight field
+            TextField(
               controller: _weightController,
-              decoration: InputDecoration(labelText: "Weight (${unitProvider.isKg ? 'kg' : 'lbs'})"),
-              keyboardType: TextInputType.number,
-            );
-          },
-        ),
-      ],
+              decoration: InputDecoration(
+                labelText: "Weight (${unitProvider.useMetric ? 'kg' : 'lbs'})",
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+          ],
+        );
+      },
     );
   }
 

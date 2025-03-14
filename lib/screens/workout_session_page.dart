@@ -30,7 +30,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   Timer? _topTimer;
   bool _topTimerActive = false;
   int _topTimerTotal = 120; // default total = 2 minutes (120 sec)
-  // Using a ValueNotifier so that both the AppBar and popup update in real time.
   final ValueNotifier<int> _topTimerNotifier = ValueNotifier<int>(120);
 
   // Basic workout info
@@ -47,7 +46,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   void initState() {
     super.initState();
 
-    // If a preloaded workout is passed, populate the fields.
     if (widget.preloadedWorkout != null) {
       _workoutName = widget.preloadedWorkout!['name'] ?? "Untitled Workout";
       _workoutDescription = widget.preloadedWorkout!['description'] ?? "";
@@ -63,13 +61,14 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           Map<String, TextEditingController> ctrl = {};
           Map<String, FocusNode> nodes = {};
 
-          // Make sure each set has the rest-timer fields.
+          // Initialize rest-timer fields.
           exercise['sets'][i]['isSetComplete'] ??= false;
           exercise['sets'][i]['restRemaining'] ??= 120;
           exercise['sets'][i]['restTotal'] ??= 120;
           exercise['sets'][i]['restTimer'] = null;
           exercise['sets'][i]['isRestActive'] ??= false;
 
+          // Reps field
           if (exercise['sets'][i].containsKey('reps')) {
             final repsVal = exercise['sets'][i]['reps'];
             ctrl['reps'] = TextEditingController(
@@ -92,6 +91,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
             });
           }
 
+          // Weight field
           if (exercise['sets'][i].containsKey('weight')) {
             final weightVal = exercise['sets'][i]['weight'];
             ctrl['weight'] = TextEditingController(
@@ -116,6 +116,33 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
             });
           }
 
+          // Distance field – always stored in miles
+          if (exercise['sets'][i].containsKey('distance')) {
+            final distVal = exercise['sets'][i]['distance'];
+            ctrl['distance'] = TextEditingController(
+              text: (distVal == null || distVal == 0.0)
+                  ? ""
+                  : distVal.toString(),
+            );
+            nodes['distance'] = FocusNode();
+            nodes['distance']!.addListener(() {
+              if (nodes['distance']!.hasFocus) {
+                ctrl['distance']!.selection = TextSelection(
+                  baseOffset: 0,
+                  extentOffset: ctrl['distance']!.text.length,
+                );
+              } else {
+                _verifyAndUpdateDistance(
+                  _selectedExercises.indexOf(exercise),
+                  i,
+                  ctrl['distance']!.text,
+                );
+              }
+            });
+          }
+
+          // Optionally handle duration if needed
+
           exercise['controllers'].add(ctrl);
           exercise['focusNodes'].add(nodes);
         }
@@ -136,15 +163,14 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       });
     });
 
-    // Create the workout document and start the main timer.
     _startWorkout();
   }
 
-  // Create the Firestore document and start the main timer.
+  // Create workout document and start main timer.
   Future<void> _startWorkout() async {
     if (user == null) return;
 
-    // Clean out ephemeral keys.
+    // Remove ephemeral keys.
     List<Map<String, dynamic>> cleanedExercises = _selectedExercises.map((exercise) {
       final copy = Map<String, dynamic>.from(exercise);
       copy.remove('controllers');
@@ -169,7 +195,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     print("Created doc: ${_workoutRef!.id}");
   }
 
-  // Main workout timer.
   void _startMainTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -183,18 +208,16 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
   }
 
-  // --- TOP TIMER LOGIC (for AppBar timer icon) ---
-  // Utility to format mm:ss.
+  // --- TOP TIMER LOGIC ---
   String _formatMMSS(int totalSeconds) {
     final m = totalSeconds ~/ 60;
     final s = totalSeconds % 60;
     return "$m:${s.toString().padLeft(2, '0')}";
   }
 
-  // Start the top timer.
   void _startTopTimer() {
     _topTimer?.cancel();
-    _topTimerNotifier.value = _topTimerTotal; // reset
+    _topTimerNotifier.value = _topTimerTotal;
     _topTimerActive = true;
     _topTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -210,13 +233,11 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
   }
 
-  // Stop the top timer.
   void _stopTopTimer() {
     _topTimer?.cancel();
     _topTimerActive = false;
   }
 
-  // Show a popup dialog with timer details.
   void _showTopTimerDialog() {
     showDialog(
       context: context,
@@ -226,7 +247,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Display time left using ValueListenableBuilder.
               ValueListenableBuilder<int>(
                 valueListenable: _topTimerNotifier,
                 builder: (context, value, child) {
@@ -248,7 +268,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 },
               ),
               const SizedBox(height: 16),
-              // We place +30s and -30s side by side.
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -271,8 +290,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                     onPressed: () {
                       setState(() {
                         _topTimerTotal = max<int>(0, _topTimerTotal - 30);
-                        _topTimerNotifier.value =
-                            max<int>(0, _topTimerNotifier.value - 30);
+                        _topTimerNotifier.value = max<int>(0, _topTimerNotifier.value - 30);
                       });
                     },
                     child: const Text("-30s"),
@@ -317,26 +335,43 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     _timer?.cancel();
     print("Finishing workout with duration: $_duration");
 
+    // Process each exercise's sets.
     for (int i = 0; i < _selectedExercises.length; i++) {
       for (int j = 0; j < (_selectedExercises[i]['sets']?.length ?? 0); j++) {
         var repsCtrl = _selectedExercises[i]['controllers'][j]['reps'];
         var weightCtrl = _selectedExercises[i]['controllers'][j]['weight'];
+        var distCtrl = _selectedExercises[i]['controllers'][j]['distance'];
 
+        // Reps update.
         if (repsCtrl != null) {
           int reps = int.tryParse(repsCtrl.text) ?? 0;
           _updateReps(i, j, reps);
         }
+
+        // Weight update.
         if (weightCtrl != null) {
           double w = double.tryParse(weightCtrl.text) ?? 0.0;
           final unitProvider = Provider.of<UnitProvider>(context, listen: false);
-          if (unitProvider.isKg) {
+          if (unitProvider.useMetric) {
             w = UnitConverter.kgToLbs(w);
           }
           _updateWeight(i, j, w);
         }
+
+        // Distance update.
+        if (distCtrl != null) {
+          double d = double.tryParse(distCtrl.text) ?? 0.0;
+          final unitProvider = Provider.of<UnitProvider>(context, listen: false);
+          // If user is in metric, the input is in km. Convert to miles for storage.
+          if (unitProvider.useMetric) {
+            d = UnitConverter.kmToMiles(d);
+          }
+          _updateDistance(i, j, d);
+        }
       }
     }
 
+    // Clean out ephemeral keys.
     List<Map<String, dynamic>> cleanedExercises = _selectedExercises.map((exercise) {
       var cleaned = Map<String, dynamic>.from(exercise);
       cleaned.remove("controllers");
@@ -432,12 +467,12 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
   }
 
+  /// Default set structure for new sets.
   Map<String, dynamic> _getDefaultSet(String category) {
     final lower = category.toLowerCase();
-    // Add rest timer fields with default total of 120 seconds.
     if (lower.contains("cardio")) {
       return {
-        'miles': null,
+        'distance': null, // Stored in miles
         'duration': null,
         'isSetComplete': false,
         'restRemaining': 120,
@@ -531,14 +566,16 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     return [];
   }
 
+  /// Prefill values from the last performed set.
   Future<Map<String, String>> _getPrefillFromLastWorkout(String exerciseId) async {
     final setsFromLast = await _fetchLastPerformedSets(exerciseId);
     if (setsFromLast.isEmpty) {
-      return {'reps': '', 'weight': ''};
+      return {'reps': '', 'weight': '', 'distance': ''};
     }
     final lastSet = setsFromLast.last;
     final unitProvider = Provider.of<UnitProvider>(context, listen: false);
 
+    // Reps
     int reps = 0;
     if (lastSet['reps'] is int) {
       reps = lastSet['reps'];
@@ -546,19 +583,33 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       reps = int.tryParse(lastSet['reps']?.toString() ?? "") ?? 0;
     }
 
-    double weight = 0.0;
+    // Weight
+    double weightVal = 0.0;
     if (lastSet['weight'] is int) {
-      weight = (lastSet['weight'] as int).toDouble();
+      weightVal = (lastSet['weight'] as int).toDouble();
     } else if (lastSet['weight'] is double) {
-      weight = lastSet['weight'];
+      weightVal = lastSet['weight'];
     }
-    if (unitProvider.isKg) {
-      weight = UnitConverter.lbsToKg(weight);
+    if (unitProvider.useMetric) {
+      weightVal = UnitConverter.lbsToKg(weightVal);
+    }
+
+    // Distance
+    double distVal = 0.0;
+    if (lastSet['distance'] is int) {
+      distVal = (lastSet['distance'] as int).toDouble();
+    } else if (lastSet['distance'] is double) {
+      distVal = lastSet['distance'];
+    }
+    if (unitProvider.useMetric) {
+      // Convert stored miles to km for display
+      distVal = UnitConverter.milesToKm(distVal);
     }
 
     return {
       'reps': reps == 0 ? '' : reps.toString(),
-      'weight': weight == 0.0 ? '' : weight.toStringAsFixed(1),
+      'weight': weightVal == 0.0 ? '' : weightVal.toStringAsFixed(1),
+      'distance': distVal == 0.0 ? '' : distVal.toStringAsFixed(2),
     };
   }
 
@@ -571,14 +622,17 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     int lastSetIndex = (exercise['sets']?.length ?? 0) - 1;
     String initialRepsText = "";
     String initialWeightText = "";
+    String initialDistanceText = "";
 
     if (lastSetIndex < 0) {
       final prefill = await _getPrefillFromLastWorkout(exercise['id']);
       initialRepsText = prefill['reps'] ?? "";
       initialWeightText = prefill['weight'] ?? "";
+      initialDistanceText = prefill['distance'] ?? "";
     } else {
       initialRepsText = exercise['controllers'][lastSetIndex]['reps']?.text ?? "";
       initialWeightText = exercise['controllers'][lastSetIndex]['weight']?.text ?? "";
+      initialDistanceText = exercise['controllers'][lastSetIndex]['distance']?.text ?? "";
     }
 
     Map<String, TextEditingController> newControllers = {};
@@ -622,6 +676,25 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       });
     }
 
+    if (newSet.containsKey('distance')) {
+      newControllers['distance'] = TextEditingController(text: initialDistanceText);
+      newFocusNodes['distance'] = FocusNode();
+      newFocusNodes['distance']!.addListener(() {
+        if (newFocusNodes['distance']!.hasFocus) {
+          newControllers['distance']!.selection = TextSelection(
+            baseOffset: 0,
+            extentOffset: newControllers['distance']!.text.length,
+          );
+        } else {
+          _verifyAndUpdateDistance(
+            exerciseIndex,
+            newSetIndex,
+            newControllers['distance']!.text,
+          );
+        }
+      });
+    }
+
     setState(() {
       exercise['sets'].add(newSet);
       exercise['controllers'] ??= <Map<String, TextEditingController>>[];
@@ -655,16 +728,24 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
   }
 
-  // Reps & Weight updates.
+  // Reps update.
   void _updateReps(int exerciseIndex, int setIndex, int reps) {
     setState(() {
       _selectedExercises[exerciseIndex]['sets'][setIndex]['reps'] = reps;
     });
   }
 
+  // Weight update.
   void _updateWeight(int exerciseIndex, int setIndex, double weight) {
     setState(() {
       _selectedExercises[exerciseIndex]['sets'][setIndex]['weight'] = weight;
+    });
+  }
+
+  // Distance update.
+  void _updateDistance(int exerciseIndex, int setIndex, double dist) {
+    setState(() {
+      _selectedExercises[exerciseIndex]['sets'][setIndex]['distance'] = dist;
     });
   }
 
@@ -674,13 +755,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     });
   }
 
-  void _updateMiles(int exerciseIndex, int setIndex, double miles) {
-    setState(() {
-      _selectedExercises[exerciseIndex]['sets'][setIndex]['miles'] = miles;
-    });
-  }
-
-  // Format main workout duration.
   String _formatDuration(int seconds) {
     final hours = seconds ~/ 3600;
     final minutes = (seconds % 3600) ~/ 60;
@@ -691,14 +765,12 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     return "${minutes}m ${remainingSeconds}s";
   }
 
-  // Format for rest timers in mm:ss.
   String _formatRestMMSS(int seconds) {
     final m = seconds ~/ 60;
     final s = seconds % 60;
     return "$m:${s.toString().padLeft(2, '0')}";
   }
 
-  // Handling set completion & rest.
   void _onSetCheckChanged(int exerciseIndex, int setIndex, bool? val) {
     if (val == null) return;
     setState(() {
@@ -717,7 +789,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       (setData['restTimer'] as Timer).cancel();
     }
     setData['isRestActive'] = true;
-    // Ensure restTotal is set.
     setData['restTotal'] ??= setData['restRemaining'];
     setData['restTimer'] = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -744,7 +815,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
     setData['isRestActive'] = false;
   }
 
-  // Verification dialogs.
   Future<bool> _showVerificationDialog(String message) async {
     return (await showDialog<bool>(
       context: context,
@@ -770,8 +840,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
           ),
         ],
       ),
-    )) ??
-        false;
+    )) ?? false;
   }
 
   Future<void> _verifyAndUpdateReps(int exerciseIndex, int setIndex, String valueStr) async {
@@ -790,12 +859,12 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
   }
 
   Future<void> _verifyAndUpdateWeight(int exerciseIndex, int setIndex, String valueStr) async {
-    double weight = double.tryParse(valueStr) ?? 0.0;
+    double weightVal = double.tryParse(valueStr) ?? 0.0;
     final unitProvider = Provider.of<UnitProvider>(context, listen: false);
-    if (unitProvider.isKg) {
-      weight = UnitConverter.kgToLbs(weight);
+    if (unitProvider.useMetric) {
+      weightVal = UnitConverter.kgToLbs(weightVal);
     }
-    if (weight > 500) {
+    if (weightVal > 500) {
       bool confirmed = await _showVerificationDialog("You entered over 500 lbs. Are you sure?");
       if (!confirmed) {
         setState(() {
@@ -805,7 +874,27 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         return;
       }
     }
-    _updateWeight(exerciseIndex, setIndex, weight);
+    _updateWeight(exerciseIndex, setIndex, weightVal);
+  }
+
+  Future<void> _verifyAndUpdateDistance(int exerciseIndex, int setIndex, String valueStr) async {
+    double distVal = double.tryParse(valueStr) ?? 0.0;
+    final unitProvider = Provider.of<UnitProvider>(context, listen: false);
+    // If user is in metric, their input is in km; convert to miles for storage.
+    if (unitProvider.useMetric) {
+      distVal = UnitConverter.kmToMiles(distVal);
+    }
+    if (distVal > 100) {
+      bool confirmed = await _showVerificationDialog("You entered over 100 miles. Are you sure?");
+      if (!confirmed) {
+        setState(() {
+          _selectedExercises[exerciseIndex]['sets'][setIndex]['distance'] = null;
+          _selectedExercises[exerciseIndex]['controllers'][setIndex]['distance']?.text = "";
+        });
+        return;
+      }
+    }
+    _updateDistance(exerciseIndex, setIndex, distVal);
   }
 
   // --- EXERCISE HISTORY LOGIC ---
@@ -880,11 +969,11 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
       builder: (context, unitProvider, child) {
         DateTime date = entry['date'];
         double volume = entry['volume'] ?? 0.0;
-        if (unitProvider.isKg) {
+        if (unitProvider.useMetric) {
           volume = UnitConverter.lbsToKg(volume);
         }
         List sets = entry['sets'] ?? [];
-        String unitLabel = unitProvider.isKg ? 'kg' : 'lbs';
+        String unitLabel = unitProvider.useMetric ? 'kg' : 'lbs';
 
         String setDetails = sets.asMap().entries.map((e) {
           int setNum = e.key + 1;
@@ -905,7 +994,7 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
               repsVal = int.tryParse(set['reps']?.toString() ?? "") ?? 0;
             }
           }
-          if (unitProvider.isKg) {
+          if (unitProvider.useMetric) {
             rawWeight = UnitConverter.lbsToKg(rawWeight);
           }
           String weightStr = rawWeight == 0.0 ? "-" : rawWeight.toStringAsFixed(1);
@@ -1022,20 +1111,15 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
         automaticallyImplyLeading: false,
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         elevation: 0,
-
-        // ------------------------------------------
-        // Single Row with spaceBetween & Flexible
         titleSpacing: 0,
         centerTitle: false,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Left side: "Workout Session" + Timer icon + Timer text
             Flexible(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // "Workout Session" text (with ellipsis if too wide)
                   Flexible(
                     child: Text(
                       'Workout Session',
@@ -1060,15 +1144,12 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 ],
               ),
             ),
-
-            // Right side: "Duration: X"
             Text(
               "Duration: ${_formatDuration(_duration)}",
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
             ),
           ],
         ),
-        // ------------------------------------------
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -1128,12 +1209,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                     ),
                                   ],
                                 ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.info_outline, color: Colors.blue),
-                                onPressed: () {
-                                  _showExerciseHistoryForExercise(exercise);
-                                },
                               ),
                               IconButton(
                                 icon: const Icon(Icons.add, color: Colors.green),
@@ -1210,13 +1285,34 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                                         width: 70,
                                                         child: TextField(
                                                           decoration: InputDecoration(
-                                                            labelText: "Weight (${unitProvider.isKg ? 'kg' : 'lbs'})",
+                                                            labelText: "Weight (${unitProvider.useMetric ? 'kg' : 'lbs'})",
                                                           ),
                                                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                                           controller: controllers['weight'],
                                                           focusNode: focusNodes['weight'],
                                                           onSubmitted: (value) {
                                                             _verifyAndUpdateWeight(exerciseIndex, setIndex, value);
+                                                          },
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                if (set.containsKey('distance'))
+                                                  Consumer<UnitProvider>(
+                                                    builder: (context, unitProvider, child) {
+                                                      return SizedBox(
+                                                        width: 70,
+                                                        child: TextField(
+                                                          decoration: InputDecoration(
+                                                            labelText: unitProvider.useMetric
+                                                                ? "Distance (km)"
+                                                                : "Distance (mi)",
+                                                          ),
+                                                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                                          controller: controllers['distance'],
+                                                          focusNode: focusNodes['distance'],
+                                                          onSubmitted: (value) {
+                                                            _verifyAndUpdateDistance(exerciseIndex, setIndex, value);
                                                           },
                                                         ),
                                                       );
@@ -1233,21 +1329,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                                           exerciseIndex,
                                                           setIndex,
                                                           int.tryParse(value) ?? 0,
-                                                        );
-                                                      },
-                                                    ),
-                                                  ),
-                                                if (set.containsKey('miles'))
-                                                  SizedBox(
-                                                    width: 70,
-                                                    child: TextField(
-                                                      decoration: const InputDecoration(labelText: "Miles"),
-                                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                      onChanged: (value) {
-                                                        _updateMiles(
-                                                          exerciseIndex,
-                                                          setIndex,
-                                                          double.tryParse(value) ?? 0.0,
                                                         );
                                                       },
                                                     ),
@@ -1271,7 +1352,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                           ),
                                         ],
                                       ),
-                                      // If rest timer is active, show its UI.
                                       if (set['isRestActive'] == true)
                                         Padding(
                                           padding: const EdgeInsets.only(top: 8),
@@ -1290,11 +1370,10 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                                   ),
                                                   Row(
                                                     children: [
-                                                      // +30s
                                                       TextButton(
                                                         style: TextButton.styleFrom(
                                                           padding: const EdgeInsets.symmetric(horizontal: 4),
-                                                          minimumSize: Size.zero, // to reduce space
+                                                          minimumSize: Size.zero,
                                                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                                           foregroundColor: primaryColor,
                                                         ),
@@ -1308,7 +1387,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                                                         },
                                                         child: const Text("+30s"),
                                                       ),
-                                                      // -30s
                                                       TextButton(
                                                         style: TextButton.styleFrom(
                                                           padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -1355,7 +1433,6 @@ class _WorkoutSessionPageState extends State<WorkoutSessionPage> {
                 },
               ),
             ),
-            // Finish and Cancel buttons.
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [

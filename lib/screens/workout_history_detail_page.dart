@@ -33,23 +33,13 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
     _commentController.text = widget.workout['comments'] ?? '';
     isFavorited = widget.workout['favorited'] == true;
 
+    // Format the top-level workout duration (stored in seconds).
     final durationValue = widget.workout['duration'];
     if (durationValue != null) {
       final durationInSeconds = durationValue is int
           ? durationValue
           : int.tryParse(durationValue.toString()) ?? 0;
-
-      final hours = durationInSeconds ~/ 3600;
-      final minutes = (durationInSeconds % 3600) ~/ 60;
-      final seconds = durationInSeconds % 60;
-
-      final buffer = StringBuffer();
-      if (hours > 0) buffer.write('${hours}h ');
-      if (minutes > 0) buffer.write('${minutes}m ');
-      if (seconds > 0) buffer.write('${seconds}s');
-
-      workoutDurationString =
-      buffer.isEmpty ? '0s' : buffer.toString().trim();
+      workoutDurationString = _formatDuration(durationInSeconds);
     }
   }
 
@@ -57,6 +47,20 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
   void dispose() {
     _commentController.dispose();
     super.dispose();
+  }
+
+  /// Converts a number of seconds into an h/m/s string (e.g. "1h 10m 30s").
+  /// If the total is zero, returns "0s".
+  String _formatDuration(int seconds) {
+    final hours = seconds ~/ 3600;
+    final minutes = (seconds % 3600) ~/ 60;
+    final secs = seconds % 60;
+
+    final buffer = StringBuffer();
+    if (hours > 0) buffer.write('${hours}h ');
+    if (minutes > 0) buffer.write('${minutes}m ');
+    if (secs > 0) buffer.write('${secs}s');
+    return buffer.isEmpty ? '0s' : buffer.toString().trim();
   }
 
   Future<void> _toggleFavorite() async {
@@ -109,7 +113,7 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
           .doc(widget.workoutId)
           .update({'comments': _commentController.text});
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Comment saved!')),
+        const SnackBar(content: Text('Comment saved!')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -118,70 +122,134 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
     }
   }
 
+  /// Displays cardio data when `sets` is a single Map (e.g. `"sets": {"duration":..., "distance":..., "reps":...}`).
   Widget _buildCardioFields(Map<String, dynamic> exercise) {
     final setsField = exercise['sets'];
+    final unitProvider = Provider.of<UnitProvider>(context, listen: false);
+
     if (setsField is Map<String, dynamic>) {
       final duration = setsField['duration'];
-      final miles = setsField['miles'];
+      final distance = setsField['distance'];
       final reps = setsField['reps'];
 
-      if (duration == null && miles == null && reps == null) {
-        return Text("No cardio data logged",
-            style: TextStyle(color: Theme.of(context).hintColor));
+      if (duration == null && distance == null && reps == null) {
+        return Text(
+          "No cardio data logged",
+          style: TextStyle(color: Theme.of(context).hintColor),
+        );
+      }
+
+      final List<Widget> cardioWidgets = [];
+
+      if (duration != null) {
+        final durationInSec = duration is int
+            ? duration
+            : int.tryParse(duration.toString()) ?? 0;
+        cardioWidgets.add(
+          Text(
+            "Duration: ${_formatDuration(durationInSec)}",
+            style: TextStyle(color: Theme.of(context).hintColor),
+          ),
+        );
+      }
+
+      if (distance != null) {
+        double distanceValue = double.tryParse(distance.toString()) ?? 0.0;
+        if (unitProvider.useMetric) {
+          distanceValue = UnitConverter.milesToKm(distanceValue);
+          cardioWidgets.add(Text(
+            "Distance: ${distanceValue.toStringAsFixed(2)} km",
+            style: TextStyle(color: Theme.of(context).hintColor),
+          ));
+        } else {
+          cardioWidgets.add(Text(
+            "Distance: ${distanceValue.toStringAsFixed(2)} mi",
+            style: TextStyle(color: Theme.of(context).hintColor),
+          ));
+        }
+      }
+
+      if (reps != null) {
+        cardioWidgets.add(
+          Text(
+            "Reps: $reps",
+            style: TextStyle(color: Theme.of(context).hintColor),
+          ),
+        );
       }
 
       return Row(
-        children: [
-          if (duration != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: Text("Duration: $duration",
-                  style: TextStyle(color: Theme.of(context).hintColor)),
-            ),
-          if (miles != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: Text("Miles: $miles",
-                  style: TextStyle(color: Theme.of(context).hintColor)),
-            ),
-          if (reps != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 8.0),
-              child: Text("Reps: $reps",
-                  style: TextStyle(color: Theme.of(context).hintColor)),
-            ),
-        ],
+        children: cardioWidgets
+            .map((w) => Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: w,
+        ))
+            .toList(),
       );
     }
-    return Text("No cardio data logged",
-        style: TextStyle(color: Theme.of(context).hintColor));
+
+    return Text(
+      "No cardio data logged",
+      style: TextStyle(color: Theme.of(context).hintColor),
+    );
   }
 
+  /// Displays strength/cardio data when `sets` is a List of maps.
   List<Widget> _buildStrengthSets(List setsList) {
     final widgets = <Widget>[];
     final unitProvider = Provider.of<UnitProvider>(context);
+
     for (int i = 0; i < setsList.length; i++) {
       final setData = setsList[i] as Map<String, dynamic>;
+
+      // If it's cardio-only data (duration, distance, or reps), but no weight
       if ((setData.containsKey('duration') ||
-          setData.containsKey('miles') ||
+          setData.containsKey('distance') ||
           setData.containsKey('reps')) &&
           !setData.containsKey('weight')) {
         final duration = setData['duration'];
-        final miles = setData['miles'];
+        final distance = setData['distance'];
         final reps = setData['reps'];
+
         final List<Widget> cardioWidgets = [];
+
         if (duration != null) {
-          cardioWidgets.add(Text("Duration: $duration",
-              style: TextStyle(color: Theme.of(context).hintColor)));
+          final durationInSec = duration is int
+              ? duration
+              : int.tryParse(duration.toString()) ?? 0;
+          cardioWidgets.add(
+            Text(
+              "Duration: ${_formatDuration(durationInSec)}",
+              style: TextStyle(color: Theme.of(context).hintColor),
+            ),
+          );
         }
-        if (miles != null) {
-          cardioWidgets.add(Text("Miles: $miles",
-              style: TextStyle(color: Theme.of(context).hintColor)));
+
+        if (distance != null) {
+          double distanceValue = double.tryParse(distance.toString()) ?? 0.0;
+          if (unitProvider.useMetric) {
+            distanceValue = UnitConverter.milesToKm(distanceValue);
+            cardioWidgets.add(Text(
+              "Distance: ${distanceValue.toStringAsFixed(2)} km",
+              style: TextStyle(color: Theme.of(context).hintColor),
+            ));
+          } else {
+            cardioWidgets.add(Text(
+              "Distance: ${distanceValue.toStringAsFixed(2)} mi",
+              style: TextStyle(color: Theme.of(context).hintColor),
+            ));
+          }
         }
+
         if (reps != null) {
-          cardioWidgets.add(Text("Reps: $reps",
-              style: TextStyle(color: Theme.of(context).hintColor)));
+          cardioWidgets.add(
+            Text(
+              "Reps: $reps",
+              style: TextStyle(color: Theme.of(context).hintColor),
+            ),
+          );
         }
+
         widgets.add(
           Row(
             children: cardioWidgets
@@ -193,9 +261,11 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
           ),
         );
       } else {
+        // Otherwise, assume strength sets (weight & reps)
         final weight = setData['weight'];
         final reps = setData['reps'];
         if (weight == null && reps == null) continue;
+
         double weightValue = 0.0;
         if (weight is int) {
           weightValue = weight.toDouble();
@@ -204,18 +274,29 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
         } else {
           weightValue = double.tryParse(weight.toString()) ?? 0.0;
         }
-        if (unitProvider.isKg) {
+
+        // Convert lbs to kg if user wants metric
+        if (unitProvider.useMetric) {
           weightValue = UnitConverter.lbsToKg(weightValue);
         }
-        String unitLabel = unitProvider.isKg ? "kg" : "lbs";
-        widgets.add(Text(
+        String unitLabel = unitProvider.useMetric ? "kg" : "lbs";
+
+        widgets.add(
+          Text(
             "Set ${i + 1}: Weight: ${weightValue.toStringAsFixed(2)} $unitLabel | Reps: $reps",
-            style: TextStyle(color: Theme.of(context).hintColor)));
+            style: TextStyle(color: Theme.of(context).hintColor),
+          ),
+        );
       }
     }
+
     if (widgets.isEmpty) {
-      widgets.add(Text("No sets data for this exercise",
-          style: TextStyle(color: Theme.of(context).hintColor)));
+      widgets.add(
+        Text(
+          "No sets data for this exercise",
+          style: TextStyle(color: Theme.of(context).hintColor),
+        ),
+      );
     }
     return widgets;
   }
@@ -236,8 +317,10 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         surfaceTintColor: Colors.transparent,
-        title: Text(widget.workout['name'] ?? 'Workout Details',
-            style: Theme.of(context).appBarTheme.titleTextStyle),
+        title: Text(
+          widget.workout['name'] ?? 'Workout Details',
+          style: Theme.of(context).appBarTheme.titleTextStyle,
+        ),
         actions: [
           IconButton(
             icon: Icon(
@@ -277,28 +360,31 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
                   ?.copyWith(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
-            Text(workoutDescription,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: Theme.of(context).hintColor)),
+            Text(
+              workoutDescription,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).hintColor,
+              ),
+            ),
             const SizedBox(height: 16),
           ],
-          Consumer<UnitProvider>(
-            builder: (context, unitProvider, child) {
-              double displayVolume = totalVolume.toDouble();
-              if (unitProvider.isKg) {
-                displayVolume = UnitConverter.lbsToKg(displayVolume);
-              }
-              return Text(
-                "Total Volume Lifted: ${displayVolume.toStringAsFixed(2)} ${unitProvider.isKg ? 'kg' : 'lbs'}",
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(fontSize: 16, fontWeight: FontWeight.w500),
-              );
-            },
-          ),
+          // Only show total volume if it's non-zero.
+          if (totalVolume != 0)
+            Consumer<UnitProvider>(
+              builder: (context, unitProvider, child) {
+                double displayVolume = totalVolume.toDouble();
+                if (unitProvider.useMetric) {
+                  displayVolume = UnitConverter.lbsToKg(displayVolume);
+                }
+                return Text(
+                  "Total Volume Lifted: ${displayVolume.toStringAsFixed(2)} ${unitProvider.useMetric ? 'kg' : 'lbs'}",
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                );
+              },
+            ),
           const SizedBox(height: 16),
           Text(
             "Exercises:",
@@ -322,21 +408,22 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
                   children: [
                     Text(
                       exerciseName,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     if (setsField is Map<String, dynamic>)
                       _buildCardioFields(exercise),
                     if (setsField is List) ..._buildStrengthSets(setsField),
                     if (setsField == null)
-                      Text("No data logged for this exercise",
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: Theme.of(context).hintColor)),
+                      Text(
+                        "No data logged for this exercise",
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).hintColor,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -356,12 +443,14 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
                 );
               },
               style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary),
-              child: Text('Start this workout',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(color: Theme.of(context).colorScheme.onPrimary)),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+              ),
+              child: Text(
+                'Start this workout',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              ),
             ),
           ],
           const SizedBox(height: 24),
@@ -378,14 +467,15 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
             style: Theme.of(context).textTheme.bodyMedium,
             decoration: InputDecoration(
               hintText: 'Enter your comment',
-              hintStyle: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: Theme.of(context).hintColor),
+              hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).hintColor,
+              ),
               filled: true,
               fillColor: Theme.of(context).scaffoldBackgroundColor,
               border: OutlineInputBorder(
-                borderSide: BorderSide(color: Theme.of(context).dividerColor),
+                borderSide: BorderSide(
+                  color: Theme.of(context).dividerColor,
+                ),
               ),
             ),
             maxLines: null,
@@ -394,12 +484,14 @@ class _WorkoutHistoryDetailPageState extends State<WorkoutHistoryDetailPage> {
           ElevatedButton(
             onPressed: _saveComment,
             style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary),
-            child: Text('Save Comment',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: Theme.of(context).colorScheme.onPrimary)),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+            ),
+            child: Text(
+              'Save Comment',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+            ),
           ),
         ],
       ),

@@ -23,25 +23,37 @@ class SettingsPage extends StatelessWidget {
         children: [
           ListTile(
             leading: Icon(Icons.account_circle, color: Theme.of(context).iconTheme.color),
-            title: Text('Account Settings', style: Theme.of(context).textTheme.bodyLarge),
+            title: Text(
+              'Account Settings',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
             onTap: () {},
           ),
           Divider(color: Theme.of(context).dividerColor),
           ListTile(
             leading: Icon(Icons.notifications, color: Theme.of(context).iconTheme.color),
-            title: Text('Notification Preferences', style: Theme.of(context).textTheme.bodyLarge),
+            title: Text(
+              'Notification Preferences',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
             onTap: () {},
           ),
           Divider(color: Theme.of(context).dividerColor),
           ListTile(
             leading: Icon(Icons.privacy_tip, color: Theme.of(context).iconTheme.color),
-            title: Text('Privacy Settings', style: Theme.of(context).textTheme.bodyLarge),
+            title: Text(
+              'Privacy Settings',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
             onTap: () {},
           ),
           Divider(color: Theme.of(context).dividerColor),
           ListTile(
             leading: Icon(Icons.brightness_6, color: Theme.of(context).iconTheme.color),
-            title: Text('Light / Dark Mode', style: Theme.of(context).textTheme.bodyLarge),
+            title: Text(
+              'Light / Dark Mode',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
             trailing: Switch(
               value: isDarkMode,
               onChanged: (_) {
@@ -54,9 +66,12 @@ class SettingsPage extends StatelessWidget {
             builder: (context, unitProvider, _) {
               return ListTile(
                 leading: Icon(Icons.fitness_center, color: Theme.of(context).iconTheme.color),
-                title: Text('Use Kilograms (kg) \ninstead of Pounds (Ibs)', style: Theme.of(context).textTheme.bodyLarge),
+                title: Text(
+                  'Use Metric instead of Imperial',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
                 trailing: Switch(
-                  value: unitProvider.isKg,
+                  value: unitProvider.useMetric,
                   onChanged: (value) {
                     unitProvider.updateUnitPreference(value);
                   },
@@ -70,7 +85,10 @@ class SettingsPage extends StatelessWidget {
             builder: (context, accessibilityProvider, _) {
               return ListTile(
                 leading: Icon(Icons.accessibility, color: Theme.of(context).iconTheme.color),
-                title: Text('Enable Large Text Mode', style: Theme.of(context).textTheme.bodyLarge),
+                title: Text(
+                  'Enable Large Text Mode',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
                 trailing: Switch(
                   value: accessibilityProvider.isLargeText,
                   onChanged: (value) {
@@ -83,13 +101,19 @@ class SettingsPage extends StatelessWidget {
           Divider(color: Theme.of(context).dividerColor),
           ListTile(
             leading: Icon(Icons.logout, color: Theme.of(context).iconTheme.color),
-            title: Text('Logout', style: Theme.of(context).textTheme.bodyLarge),
+            title: Text(
+              'Logout',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
             onTap: () {},
           ),
           Divider(color: Theme.of(context).dividerColor),
           ListTile(
             leading: const Icon(Icons.delete_forever, color: Colors.red),
-            title: const Text('Delete Account', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            title: const Text(
+              'Delete Account',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
             onTap: () {
               showDialog(
                 context: context,
@@ -105,7 +129,10 @@ class SettingsPage extends StatelessWidget {
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                     TextButton(
-                      child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                      child: const Text(
+                        'Delete',
+                        style: TextStyle(color: Colors.red),
+                      ),
                       onPressed: () {
                         // Implement delete account logic here
                         Navigator.of(context).pop();
